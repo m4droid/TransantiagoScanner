@@ -300,11 +300,20 @@ angular.module('transantiagoScannerApp')
         stops: []
       };
 
+      var minLat = Number.POSITIVE_INFINITY;
+      var minLng = Number.POSITIVE_INFINITY;
+      var maxLat = Number.NEGATIVE_INFINITY;
+      var maxLng = Number.NEGATIVE_INFINITY;
+
       for (var i in busRouteData[busDirection].shapes) {
-        busRoute.polyline.push(new google.maps.LatLng({
-          lat: parseFloat(busRouteData[busDirection].shapes[i].latShape),
-          lng: parseFloat(busRouteData[busDirection].shapes[i].lonShape)
-        }));
+        var lat = parseFloat(busRouteData[busDirection].shapes[i].latShape);
+        var lng = parseFloat(busRouteData[busDirection].shapes[i].lonShape);
+        busRoute.polyline.push(new google.maps.LatLng({lat: lat, lng: lng}));
+
+        minLat = Math.min(lat, minLat);
+        minLng = Math.min(lng, minLng);
+        maxLat = Math.max(lat, maxLat);
+        maxLng = Math.max(lng, maxLng);
       }
 
       for (i in busRouteData[busDirection].paradas) {
@@ -376,6 +385,12 @@ angular.module('transantiagoScannerApp')
       if ($scope.selectedBusRouteDirectionName !== undefined) {
         $scope.selectedBusRouteDirectionName = $scope.selectedBusRouteDirectionName.trim();
       }
+
+      var routeBounds = new google.maps.LatLngBounds(
+        new google.maps.LatLng(minLat, minLng),
+        new google.maps.LatLng(maxLat, maxLng)
+      );
+      $scope.map.fitBounds(routeBounds);
 
       triggerUpdate();
     };
