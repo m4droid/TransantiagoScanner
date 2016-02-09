@@ -188,6 +188,38 @@ angular.module('transantiagoScannerApp')
       }
     };
 
+    var getBusPositionFromStop = function (busPlate) {
+      var lastDistanceIndex = $scope.busesData[busPlate].distances.length - 1;
+
+      var stopIndex = $scope.busesData[busPlate].distances[lastDistanceIndex].stopIndex;
+      var totalDistance = $scope.busesData[busPlate].distances[lastDistanceIndex].distance / 10.0;
+      var stopPolylineIndex = $scope.busRouteStopMarkers[stopIndex].polylineIndex;
+
+      var targetPosition = null;
+      var distance = 0.0;
+      var positions = $scope.busRouteDirectionPolyline.getPath();
+
+      for (var index = stopPolylineIndex; index >= 1; index--) {
+        var pathDistance = google.maps.geometry.spherical.computeDistanceBetween(
+          positions.getAt(index),
+          positions.getAt(index - 1)
+        );
+
+        if (distance + pathDistance >= totalDistance) {
+          targetPosition = google.maps.geometry.spherical.interpolate(
+            positions.getAt(index),
+            positions.getAt(index - 1),
+            1.0 * (totalDistance - distance) / pathDistance
+          );
+          break;
+        } else {
+          distance += pathDistance;
+        }
+      }
+
+      return targetPosition;
+    };
+
     var setBusesMarkers = function () {
       for (var busPlate in $scope.busesData) {
         if ($scope.busesData[busPlate].distances.length === 0) {
@@ -196,7 +228,7 @@ angular.module('transantiagoScannerApp')
         }
 
         var stopIndex = $scope.busesData[busPlate].distances[$scope.busesData[busPlate].distances.length - 1].stopIndex;
-        var position = $scope.busRouteStopMarkers[stopIndex].getPosition();
+        var position = getBusPositionFromStop(busPlate);
 
         if ($scope.busesData[busPlate].marker === null) {
           $scope.busesData[busPlate].marker = new google.maps.Marker({
@@ -239,11 +271,21 @@ angular.module('transantiagoScannerApp')
         if (response.data.servicios !== undefined && response.data.servicios.item !== undefined) {
           for (var index in response.data.servicios.item) {
             if (response.data.servicios.item[index].ppubus1 !== undefined) {
-              pushBusData(response.data.servicios.item[index].ppubus1, date, stopIndex, response.data.servicios.item[index].distanciabus1);
+              pushBusData(
+                response.data.servicios.item[index].ppubus1,
+                date,
+                stopIndex,
+                response.data.servicios.item[index].distanciabus1
+              );
             }
 
             if (response.data.servicios.item[index].ppubus2 !== undefined) {
-              pushBusData(response.data.servicios.item[index].ppubus2, date, stopIndex, response.data.servicios.item[index].distanciabus2);
+              pushBusData(
+                response.data.servicios.item[index].ppubus2,
+                date,
+                stopIndex,
+                response.data.servicios.item[index].distanciabus2
+              );
             }
           }
         }
@@ -343,7 +385,7 @@ angular.module('transantiagoScannerApp')
 
         if (projectionPosition !== null && projectionPosition[0] !== -1) {
           busRoute.stops[index].valid = true;
-          busRoute.stops[index].index = projectionPosition[0] + 1;
+          busRoute.stops[index].polylineIndex = projectionPosition[0] + 1;
           busRoute.polyline.splice(projectionPosition[0] + 1, 0, new google.maps.LatLng(busRoute.stops[index].position));
           latestIndex = projectionPosition[0];
         } else {
@@ -399,6 +441,8 @@ angular.module('transantiagoScannerApp')
       if (busRoute === $scope.selectedBusRoute && busDirection === $scope.selectedBusRouteDirection) {
         return;
       }
+
+      // busRoute = 'H05';
 
       if ($scope.updateTimeout !== undefined) {
         $timeout.cancel($scope.updateTimeout);
