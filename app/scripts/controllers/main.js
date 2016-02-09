@@ -192,7 +192,7 @@ angular.module('transantiagoScannerApp')
       for (var busPlate in $scope.busesData) {
         if ($scope.busesData[busPlate].distances.length === 0) {
           removeBusMarker(busPlate);
-          return;
+          continue;
         }
 
         var stopIndex = $scope.busesData[busPlate].distances[$scope.busesData[busPlate].distances.length - 1].stopIndex;
