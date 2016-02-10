@@ -470,6 +470,29 @@ angular.module('transantiagoScannerApp')
       });
     };
 
+    $scope.setGroup = function (group) {
+      $scope.selectedGroup = group.name;
+    }
+
+    $scope.groups = [
+      {name: '1', color: '#000000', textColor: '#FFFFFF'},
+      {name: '2', color: '#000000', textColor: '#FFFFFF'},
+      {name: '3', color: '#000000', textColor: '#FFFFFF'},
+      {name: '4', color: '#000000', textColor: '#FFFFFF'},
+      {name: '5', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'B', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'C', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'D', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'E', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'F', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'G', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'H', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'I', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'J', color: '#000000', textColor: '#FFFFFF'}
+    ];
+
+    $scope.selectedGroup = '1';
+
     $http({
       method: 'GET',
       url: '/images/markers/marker_bus.svg'

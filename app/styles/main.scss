@@ -20,6 +20,14 @@ body {
   margin: 0;
 }
 
+.sidenav {
+  height: calc(100vh - 50px);
+}
+
 #google_map_container {
-  height: 100vh;
+  height: calc(100vh - 64px);
+}
+
+.groups_selector .groups_selector_button {
+  min-width: 45px;
 }
