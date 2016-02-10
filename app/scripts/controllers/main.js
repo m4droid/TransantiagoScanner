@@ -227,15 +227,19 @@ angular.module('transantiagoScannerApp')
           continue;
         }
 
-        var stopIndex = $scope.busesData[busPlate].distances[$scope.busesData[busPlate].distances.length - 1].stopIndex;
         var position = getBusPositionFromStop(busPlate);
+        var markerTemplate = $scope.busMarkerSvgTemplate.replace('{{bus_plate}}', busPlate);
+        markerTemplate = markerTemplate.replace('{{bus_color}}', $scope.busRouteColor);
 
         if ($scope.busesData[busPlate].marker === null) {
           $scope.busesData[busPlate].marker = new google.maps.Marker({
             map: $scope.map,
             id: busPlate,
             position: position,
-            title: busPlate
+            title: busPlate,
+            icon: {
+              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(markerTemplate)
+            }
           });
         } else {
           if ($scope.busesData[busPlate].distances.length > 0) { 
@@ -394,9 +398,11 @@ angular.module('transantiagoScannerApp')
         }
       }
 
+      $scope.busRouteColor = busRouteData[busDirection].color;
+
       $scope.busRouteDirectionPolyline = new google.maps.Polyline({
         path: busRoute.polyline,
-        strokeColor: busRouteData[busDirection].color,
+        strokeColor: $scope.busRouteColor,
         strokeOpacity: 1.0,
         strokeWeight: 3,
         clickable: false,
@@ -423,7 +429,7 @@ angular.module('transantiagoScannerApp')
 
       $scope.selectedBusRoute = busRouteCode;
       $scope.selectedBusRouteDirection = busDirection;
-      $scope.selectedBusRouteDirectionName = busRouteData[busDirection].destino;
+      $scope.selectedBusRouteDirectionName = busRouteData[busDirection].destino + ' - ' + busRouteData[Math.abs(busDirection - 1)].destino;
       if ($scope.selectedBusRouteDirectionName !== undefined) {
         $scope.selectedBusRouteDirectionName = $scope.selectedBusRouteDirectionName.trim();
       }
@@ -462,6 +468,15 @@ angular.module('transantiagoScannerApp')
         console.log('getRouteData error', response);
       });
     };
+
+    $http({
+      method: 'GET',
+      url: '/images/markers/marker_bus.svg'
+    }).then(function (response) {
+      $scope.busMarkerSvgTemplate = response.data;
+    }, function (response) {
+      console.log('getBusMarkerSvg error', response);
+    });
 
     uiGmapGoogleMapApi.then(function () {
       $scope.map = new google.maps.Map(document.getElementById('google_map_container'), {

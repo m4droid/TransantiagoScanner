@@ -2,7 +2,7 @@
 <html ng-app="transantiagoScannerApp">
   <head>
     <meta charset="utf-8">
-    <title></title>
+    <title>Transantiago Scanner</title>
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width">
     <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
@@ -27,7 +27,7 @@
         <span flex></span>
         <div ng-if="selectedBusRoute">
           <span>{{selectedBusRoute}}</span>
-          <span ng-if="selectedBusRouteDirectionName">&nbsp;- Destino {{selectedBusRouteDirectionName}}</span>
+          <span ng-if="selectedBusRouteDirectionName">&nbsp;{{selectedBusRouteDirectionName}}</span>
         </div>
       </div>
     </md-toolbar>
