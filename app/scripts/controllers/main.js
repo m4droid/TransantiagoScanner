@@ -129,40 +129,15 @@ var getClosestPointsProjection = function (map, positions, latLng, startIndex) {
  * Controller of the transantiagoScannerApp
  */
 angular.module('transantiagoScannerApp')
-  .controller('MainCtrl', function ($scope, $timeout, $http, $mdSidenav, $mdToast, API, uiGmapGoogleMapApi) {
-    /**
-     * Supplies a function that will continue to operate until the
-     * time is up.
-     */
-    var debounce = function (func, wait) {
-      var timer;
-      return function debounced() {
-        var context = $scope,
-            args = Array.prototype.slice.call(arguments);
-        $timeout.cancel(timer);
-        timer = $timeout(function() {
-          timer = undefined;
-          func.apply(context, args);
-        }, wait || 10);
-      };
-    };
-
-    /**
-     * Build handler to open/close a SideNav; when animation finishes
-     * report completion in console
-     */
-    var buildDelayedToggler = function (navID) {
-      return debounce(function() {
-        $mdSidenav(navID)
+  .controller('MainCtrl', function ($scope, $timeout, $http, $mdSidenav, $mdToast, $mdMedia, API, uiGmapGoogleMapApi) {
+    var buildToggler = function (navId) {
+      return function () {
+        $mdSidenav(navId)
           .toggle()
           .then(function () {
-            // $log.debug('toggle ' + navID + ' is done');
+            console.log('toggle ' + navId + ' is done');
           });
-      }, 200);
-    };
-
-    $scope.toggleSidenav = function () {
-      buildDelayedToggler('left');
+      };
     };
 
     var pushBusData = function (plate, date, stopIndex, distance) {
@@ -419,7 +394,11 @@ angular.module('transantiagoScannerApp')
       $scope.busRouteStopMarkers = [];
       for (index in busRoute.stops) {
         options = busRoute.stops[index];
-        options.map = $scope.map;
+
+        if ($mdMedia('gt-sm')) {
+          options.map = $scope.map;
+        }
+
         options.index = index;
         options.title = index + ' - ' + options.title;
         options.opacity = 0.4;
@@ -430,7 +409,8 @@ angular.module('transantiagoScannerApp')
 
       $scope.selectedBusRoute = busRouteCode;
       $scope.selectedBusRouteDirection = busDirection;
-      $scope.selectedBusRouteDirectionName = busRouteData[busDirection].destino + ' - ' + busRouteData[Math.abs(busDirection - 1)].destino;
+      $scope.selectedBusRouteDirectionFrom = busRouteData[busDirection].destino;
+      $scope.selectedBusRouteDirectionTo = busRouteData[Math.abs(busDirection - 1)].destino;
       if ($scope.selectedBusRouteDirectionName !== undefined) {
         $scope.selectedBusRouteDirectionName = $scope.selectedBusRouteDirectionName.trim();
       }
@@ -447,6 +427,10 @@ angular.module('transantiagoScannerApp')
     $scope.setBusRoute = function (busRoute, busDirection) {
       if (busRoute === $scope.selectedBusRoute && busDirection === $scope.selectedBusRouteDirection) {
         return;
+      }
+
+      if ( ! $mdMedia('gt-sm')) {
+        $scope.toggleSidenav();
       }
 
       // busRoute = 'H05';
@@ -472,7 +456,7 @@ angular.module('transantiagoScannerApp')
 
     $scope.setGroup = function (group) {
       $scope.selectedGroup = group.name;
-    }
+    };
 
     $scope.groups = [
       {name: '1', color: '#000000', textColor: '#FFFFFF'},
@@ -491,6 +475,7 @@ angular.module('transantiagoScannerApp')
       {name: 'J', color: '#000000', textColor: '#FFFFFF'}
     ];
 
+    $scope.toggleSidenav = buildToggler('left');
     $scope.selectedGroup = '1';
 
     $http({

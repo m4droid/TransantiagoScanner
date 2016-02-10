@@ -20,14 +20,23 @@ body {
   margin: 0;
 }
 
+.title {
+  font-size: 0.9em !important;
+}
+
 .sidenav {
-  height: calc(100vh - 50px);
+  height: calc(100vh);
 }
 
 #google_map_container {
-  height: calc(100vh - 64px);
+  height: calc(100vh);
 }
 
 .groups_selector .groups_selector_button {
-  min-width: 45px;
+  min-width: 42px;
+}
+
+.route_info {
+  font-size: 0.7em;
+  text-align: right;
 }

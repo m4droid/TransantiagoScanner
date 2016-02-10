@@ -21,19 +21,21 @@
         <md-button class="md-icon-button" aria-label="Menú" ng-click="toggleSidenav()">
           <md-icon md-svg-icon="/images/svg/menu.svg"></md-icon>
         </md-button>
-        <h2>
-          <span>Transantiago Scanner</span>
+        <h2 class="title">
+          <div>Transantiago</div>
+          <div>Scanner</div>
         </h2>
         <span flex></span>
-        <div ng-if="selectedBusRoute">
-          <span>{{selectedBusRoute}}</span>
-          <span ng-if="selectedBusRouteDirectionName">&nbsp;{{selectedBusRouteDirectionName}}</span>
+        <div class="route_info" ng-if="selectedBusRoute">
+          <div>{{selectedBusRoute}}</div>
+          <div>{{selectedBusRouteDirectionFrom}}</div>
+          <div>{{selectedBusRouteDirectionTo}}</div>
         </div>
       </div>
     </md-toolbar>
 
     <section layout="vertical" layout-fill>
-      <md-sidenav class="md-sidenav-left md-whiteframe-z2 sidenav" md-component-id="left" md-is-locked-open="$mdMedia('gt-sm')" flex-md="80">
+      <md-sidenav class="md-sidenav-left md-whiteframe-z2 sidenav" md-component-id="left" md-is-locked-open="$mdMedia('gt-sm')" flex="25" flex-xs="80" flex-sm="35">
         <md-grid-list class="groups_selector" md-cols="7" md-row-height="1:1" md-gutter="0px">
           <md-grid-tile ng-repeat="group in ::groups" ng-style="{'background-color': group.color, 'color': group.textColor}">
             <md-button class="groups_selector_button" ng-click="setGroup(group)">{{ ::group.name }}</md-button>
