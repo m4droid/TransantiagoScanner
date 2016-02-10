@@ -195,6 +195,21 @@ angular.module('transantiagoScannerApp')
       return [targetPosition, $scope.busesData[busPlate].distances[lastDistanceIndex].stopIndex, totalDistance];
     };
 
+    var getToastPromise = function () {
+      $scope.toastScope = $scope.$new(true);
+      return $mdToast.show({
+        templateUrl: 'views/toast_update.html',
+        position: 'bottom right',
+        hideDelay: 0,
+        scope: $scope.toastScope
+      });
+    };
+
+    var clearToast = function () {
+      delete $scope.toastScope;
+      delete $scope.toastPromise;
+    };
+
     var setBusesMarkers = function () {
       for (var busPlate in $scope.busesData) {
         if ($scope.busesData[busPlate].distances.length === 0) {
@@ -226,7 +241,8 @@ angular.module('transantiagoScannerApp')
         }
       }
 
-      $mdToast.hide($scope.updateToastPromise);
+      $mdToast.hide($scope.toastPromise);
+      clearToast();
       $scope.updateTimeout = $timeout(triggerUpdate, 60 * 1000);
     };
 
@@ -277,16 +293,6 @@ angular.module('transantiagoScannerApp')
     };
 
     var triggerUpdate = function () {
-      $scope.toastScope = $scope.$new(true);
-      $scope.toastScope.percentage = 0;
-
-      $scope.updateToastPromise = $mdToast.show({
-        templateUrl: 'views/toast_update.html',
-        position: 'bottom right',
-        hideDelay: 0,
-        scope: $scope.toastScope
-      });
-
       if ($scope.busesData === undefined) {
         $scope.busesData = {};
       }
@@ -294,6 +300,13 @@ angular.module('transantiagoScannerApp')
       for (var busPlate in $scope.busesData) {
         $scope.busesData[busPlate].distances = [];
       }
+
+      if ($scope.toastPromise === undefined) {
+        $scope.toastPromise = getToastPromise();
+      }
+
+      $scope.toastScope.percentage = 0;
+      $scope.toastScope.text = 'Actualizando buses';
 
       getStopsInfo(new Date(), $scope.busRouteStopMarkers.length - 1);
     };
@@ -443,6 +456,9 @@ angular.module('transantiagoScannerApp')
         removeBusMarker(busPlate);
       }
       $scope.busesData = {};
+
+      $scope.toastPromise = getToastPromise();
+      $scope.toastScope.text = 'Obteniendo ruta';
 
       $http({
         method: 'GET',
