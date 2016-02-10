@@ -1,63 +1,5 @@
 'use strict';
 
-var GOOGLE_MAPS_STYLES = [
-  {
-    'featureType': 'road.highway',
-    'stylers': [{'color': '#ffffff'}]
-  },
-  {
-    'featureType': 'road.highway',
-    'elementType': 'labels.text',
-    'stylers': [{'color': '#000000'}, {'weight': 0.1}]
-  },
-  {
-    'featureType': 'road.arterial',
-    'stylers': [{'color': '#ffffff'}]
-  },
-  {
-    'featureType': 'road.arterial',
-    'elementType': 'labels.text',
-    'stylers': [{'color': '#000000'}, {'weight': 0.1}]
-  },
-  {
-    'featureType': 'road.local',
-    'stylers': [{'color': '#ffffff'}]
-  },
-  {
-    'featureType': 'road.local',
-    'elementType': 'labels.text',
-    'stylers': [{'color': '#000000'}, {'weight': 0.1}]
-  },
-  {
-    'featureType': 'landscape.natural',
-    'elementType': 'geometry.fill',
-    'stylers': [{'color': '#ebead5'}]
-  },
-  {
-    'featureType': 'transit.station.bus',
-    'stylers': [{'visibility': 'off'}]
-  },
-  {
-    'featureType': 'landscape.natural.terrain'
-  },
-  {
-    'featureType': 'poi',
-    'elementType': 'labels.text.fill',
-    'stylers': [{'color': '#E47903'}]
-  },
-  {
-    'featureType': 'transit.station.rail',
-    'elementType': 'labels.text.fill',
-    'stylers': [{'color': '#FF0000'}, {'visibility': 'on'}]
-  },
-  {
-    'featureType': 'transit.station.rail',
-    'elementType': 'labels.icon',
-    'stylers': [{'hue': '#CC0000'}]
-  }
-];
-
-
 // http://stackoverflow.com/questions/1502590/calculate-distance-between-two-points-in-google-maps-v3
 var rad = function (x) {
   return x * Math.PI / 180;
@@ -130,15 +72,6 @@ var getClosestPointsProjection = function (map, positions, latLng, startIndex) {
  */
 angular.module('transantiagoScannerApp')
   .controller('MainCtrl', function ($scope, $timeout, $http, $mdSidenav, $mdToast, $mdMedia, API, uiGmapGoogleMapApi) {
-    var buildToggler = function (navId) {
-      return function () {
-        $mdSidenav(navId)
-          .toggle()
-          .then(function () {
-            console.log('toggle ' + navId + ' is done');
-          });
-      };
-    };
 
     var pushBusData = function (plate, date, stopIndex, distance) {
       if ($scope.busesData[plate] === undefined) {
@@ -196,18 +129,15 @@ angular.module('transantiagoScannerApp')
     };
 
     var getToastPromise = function () {
-      $scope.toastScope = $scope.$new(true);
-      return $mdToast.show({
-        templateUrl: 'views/toast_update.html',
-        position: 'bottom right',
-        hideDelay: 0,
-        scope: $scope.toastScope
-      });
-    };
-
-    var clearToast = function () {
-      delete $scope.toastScope;
-      delete $scope.toastPromise;
+      if ($scope.toastPromise === undefined) {
+        $scope.toastPromise = $mdToast.show({
+          templateUrl: 'views/toast_update.html',
+          position: 'bottom right',
+          hideDelay: 0,
+          scope: $scope.toastScope
+        });
+      }
+      return $scope.toastPromise;
     };
 
     var setBusesMarkers = function () {
@@ -242,8 +172,10 @@ angular.module('transantiagoScannerApp')
       }
 
       $mdToast.hide($scope.toastPromise);
-      clearToast();
       $scope.updateTimeout = $timeout(triggerUpdate, 60 * 1000);
+
+      delete $scope.toastScope;
+      delete $scope.toastPromise;
     };
 
     var getStopsInfo = function (date, stopIndex) {
@@ -301,17 +233,28 @@ angular.module('transantiagoScannerApp')
         $scope.busesData[busPlate].distances = [];
       }
 
-      if ($scope.toastPromise === undefined) {
-        $scope.toastPromise = getToastPromise();
+      if ($scope.toastScope === undefined) {
+        $scope.toastScope = $scope.$new(true);
       }
-
-      $scope.toastScope.percentage = 0;
       $scope.toastScope.text = 'Actualizando buses';
+      $scope.toastScope.percentage = 0;
 
+      getToastPromise();
       getStopsInfo(new Date(), $scope.busRouteStopMarkers.length - 1);
     };
 
-    $scope.setBusRoutePolyline = function (response, busRouteCode, busDirection) {
+    var getBusRouteData = function (busRoute, busDirection) {
+      $http({
+        method: 'GET',
+        url: sprintf(API.getRoute, busRoute)
+      }).then(function (response) {
+        setBusRoutePolyline(response, busRoute, busDirection);
+      }, function (response) {
+        console.log('getRouteData error', response);
+      });
+    };
+
+    var setBusRoutePolyline = function (response, busRouteCode, busDirection) {
       var index = 0;
 
       if ($scope.busRouteDirectionPolyline !== undefined) {
@@ -437,13 +380,17 @@ angular.module('transantiagoScannerApp')
       triggerUpdate();
     };
 
+    $scope.setGroup = function (group) {
+      $scope.selectedGroup = group.name;
+    };
+
+    $scope.toggleSidenav = function () {
+      $mdSidenav('left').toggle();
+    };
+
     $scope.setBusRoute = function (busRoute, busDirection) {
       if (busRoute === $scope.selectedBusRoute && busDirection === $scope.selectedBusRouteDirection) {
         return;
-      }
-
-      if ( ! $mdMedia('gt-sm')) {
-        $scope.toggleSidenav();
       }
 
       // busRoute = 'H05';
@@ -457,22 +404,23 @@ angular.module('transantiagoScannerApp')
       }
       $scope.busesData = {};
 
-      $scope.toastPromise = getToastPromise();
+      if ($scope.toastScope === undefined) {
+        $scope.toastScope = $scope.$new(true);
+      }
       $scope.toastScope.text = 'Obteniendo ruta';
+      $scope.toastScope.percentage = 0;
 
-      $http({
-        method: 'GET',
-        url: sprintf(API.getRoute, busRoute)
-      }).then(function (response) {
-        $scope.setBusRoutePolyline(response, busRoute, busDirection);
-      }, function (response) {
-        console.log('getRouteData error', response);
-      });
+      if ( ! $mdMedia('gt-sm')) {
+        getToastPromise();
+        $mdSidenav('left').toggle().then(function () {
+          getBusRouteData(busRoute, busDirection);
+        });
+      } else {
+        getBusRouteData(busRoute, busDirection);
+      }
     };
 
-    $scope.setGroup = function (group) {
-      $scope.selectedGroup = group.name;
-    };
+    $scope.$mdMedia = $mdMedia;
 
     $scope.groups = [
       {name: '1', color: '#000000', textColor: '#FFFFFF'},
@@ -491,9 +439,9 @@ angular.module('transantiagoScannerApp')
       {name: 'J', color: '#000000', textColor: '#FFFFFF'}
     ];
 
-    $scope.toggleSidenav = buildToggler('left');
     $scope.selectedGroup = '1';
 
+    // Get bus markers SVG
     $http({
       method: 'GET',
       url: '/images/markers/marker_bus.svg'
@@ -508,7 +456,9 @@ angular.module('transantiagoScannerApp')
         center: {lat: -33.48, lng: -70.65},
         zoom: 11,
         mapTypeId: google.maps.MapTypeId.ROADMAP,
-        styles: GOOGLE_MAPS_STYLES
+        disableDefaultUI: true,
+        rotateControl: false,
+        streetViewControl: false
       });
     });
   });

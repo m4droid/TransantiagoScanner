@@ -34,8 +34,8 @@
       </div>
     </md-toolbar>
 
-    <section layout="vertical" layout-fill>
-      <md-sidenav class="md-sidenav-left md-whiteframe-z2 sidenav" md-component-id="left" md-is-locked-open="$mdMedia('gt-sm')" flex="25" flex-xs="80" flex-sm="35">
+    <section layout="vertical" >
+      <md-sidenav class="md-sidenav-left md-whiteframe-z2 sidenav" md-component-id="left" md-is-locked-open="$mdMedia('gt-sm')" flex="25" flex-xs="80" flex-sm="35" ng-class="{'sidenav_gt_sm': $mdMedia('gt-sm'), 'sidenav_sm': ! $mdMedia('gt-sm')}">
         <md-grid-list class="groups_selector" md-cols="7" md-row-height="1:1" md-gutter="0px">
           <md-grid-tile ng-repeat="group in ::groups" ng-style="{'background-color': group.color, 'color': group.textColor}">
             <md-button class="groups_selector_button" ng-click="setGroup(group)">{{ ::group.name }}</md-button>
@@ -59,7 +59,7 @@
         </md-content>
       </md-sidenav>
       <md-content class="no_padding" layout-padding flex>
-        <div id="google_map_container"></div>
+        <div id="google_map_container" ng-class="{'google_map_container_gt_sm': $mdMedia('gt-sm'), 'google_map_container_sm': ! $mdMedia('gt-sm')}"></div>
       </md-content>
     </section>
 

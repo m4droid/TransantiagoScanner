@@ -24,12 +24,20 @@ body {
   font-size: 0.9em !important;
 }
 
-.sidenav {
+.sidenav_sm {
   height: calc(100vh);
 }
 
-#google_map_container {
-  height: calc(100vh);
+.sidenav_gt_sm {
+  height: calc(100vh - 64px);
+}
+
+.google_map_container_sm {
+  height: calc(100vh - 72px);
+}
+
+.google_map_container_gt_sm {
+  height: calc(100vh - 80px);
 }
 
 .groups_selector .groups_selector_button {
