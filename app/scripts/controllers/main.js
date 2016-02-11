@@ -71,7 +71,7 @@ var getClosestPointsProjection = function (map, positions, latLng, startIndex) {
  * Controller of the transantiagoScannerApp
  */
 angular.module('transantiagoScannerApp')
-  .controller('MainCtrl', function ($scope, $timeout, $http, $mdSidenav, $mdToast, $mdMedia, API, uiGmapGoogleMapApi) {
+  .controller('MainCtrl', function ($scope, $timeout, $http, $templateRequest, $compile, $mdSidenav, $mdToast, $mdMedia, API, uiGmapGoogleMapApi) {
 
     var pushBusData = function (plate, date, stopIndex, distance) {
       if ($scope.busesData[plate] === undefined) {
@@ -140,9 +140,16 @@ angular.module('transantiagoScannerApp')
       return $scope.toastPromise;
     };
 
-    var updateInfoWindow = function () {
-      $scope.infoWindow.busMarker = this;
-      $scope.infoWindow.forceUpdate = new Date();
+    var updateInfoWindowScope = function (marker) {
+      if ($scope.infoWindow.scope === undefined) {
+        $scope.infoWindow.scope = $scope.$new(true);
+      }
+      $scope.infoWindow.scope.marker = marker;
+      $scope.infoWindow.scope.lastUpdate = new Date();
+    };
+
+    var openInfoWindow = function () {
+      updateInfoWindowScope(this);
       $scope.$digest();
       $scope.infoWindow.open($scope.map, this);
     };
@@ -155,6 +162,7 @@ angular.module('transantiagoScannerApp')
         }
 
         var position = getBusPositionFromStop(busPlate);
+
         var markerTemplate = $scope.busMarkerSvgTemplate.replace('{{bus_plate}}', busPlate);
         markerTemplate = markerTemplate.replace('{{bus_color}}', $scope.busRouteColor);
 
@@ -172,7 +180,7 @@ angular.module('transantiagoScannerApp')
               distance: position[2]
             }
           });
-          marker.addListener('click', updateInfoWindow);
+          marker.addListener('click', openInfoWindow);
           $scope.busesData[busPlate].marker = marker;
         } else {
           if ($scope.busesData[busPlate].distances.length > 0) { 
@@ -188,7 +196,7 @@ angular.module('transantiagoScannerApp')
         }
 
         if ($scope.busesData[busPlate].marker === $scope.infoWindow.busMarker) {
-          $scope.infoWindow.forceUpdate = new Date();
+          updateInfoWindowScope($scope.busesData[busPlate].marker);
         }
       }
 
@@ -463,35 +471,27 @@ angular.module('transantiagoScannerApp')
     $scope.selectedGroup = '1';
 
     // Get bus markers SVG
-    $http({
-      method: 'GET',
-      url: '/images/markers/marker_bus.svg'
-    }).then(function (response) {
-      $scope.busMarkerSvgTemplate = response.data;
-    }, function (response) {
-      console.log('getBusMarkerSvg error', response);
+    $templateRequest('images/markers/marker_bus.svg').then(function (template) {
+      $scope.busMarkerSvgTemplate = template;
+    }, function () {
+      console.log('getBusMarkerSvg error');
     });
 
     // InfoWindow template
-    $http({
-      method: 'GET',
-      url: '/views/infowindow_bus.html'
-    }).then(function (response) {
-      $scope.busMarkerInfoWindowTemplate = response.data;
-    }, function (response) {
-      console.log('getBusMarkerInfoWindowTemplate error', response);
+    $templateRequest('views/infowindow_bus.html').then(function (template) {
+      $scope.busMarkerInfoWindowTemplate = template;
+    }, function () {
+      console.log('getBusMarkerInfoWindowTemplate error');
     });
 
     uiGmapGoogleMapApi.then(function () {
       $scope.infoWindow = new google.maps.InfoWindow();
       $scope.infoWindow.forceUpdate = new Date();
 
-      $scope.$watch('infoWindow.forceUpdate', function () {
-        if ($scope.busMarkerInfoWindowTemplate !== undefined && $scope.infoWindow.busMarker !== undefined) {
-          var template = $scope.busMarkerInfoWindowTemplate;
-          template = template.replace('{{last_position_stop}}', $scope.infoWindow.busMarker.lastPosition.stop);
-          template = template.replace('{{last_position_distance}}', $scope.infoWindow.busMarker.lastPosition.distance);
-          $scope.infoWindow.setContent(template);
+      $scope.$watch('infoWindow.scope.lastUpdate', function () {
+        if ($scope.infoWindow.scope !== undefined) {
+          var contents = $compile($scope.busMarkerInfoWindowTemplate)($scope.infoWindow.scope);
+          $scope.infoWindow.setContent(contents[0]);
         }
       });
 
