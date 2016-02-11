@@ -36,9 +36,7 @@ angular
   })
   .config(function (uiGmapGoogleMapApiProvider) {
     uiGmapGoogleMapApiProvider.configure({
-      // key: 'your api key',
-      sensor: false,
-      v: '3.20',
-      libraries: 'geometry,visualization'
+      v: '3.22',
+      libraries: 'geometry'
     });
   });
