@@ -140,6 +140,13 @@ angular.module('transantiagoScannerApp')
       return $scope.toastPromise;
     };
 
+    var updateInfoWindow = function () {
+      $scope.infoWindow.busMarker = this;
+      $scope.infoWindow.forceUpdate = new Date();
+      $scope.$digest();
+      $scope.infoWindow.open($scope.map, this);
+    };
+
     var setBusesMarkers = function () {
       for (var busPlate in $scope.busesData) {
         if ($scope.busesData[busPlate].distances.length === 0) {
@@ -152,22 +159,36 @@ angular.module('transantiagoScannerApp')
         markerTemplate = markerTemplate.replace('{{bus_color}}', $scope.busRouteColor);
 
         if ($scope.busesData[busPlate].marker === null) {
-          $scope.busesData[busPlate].marker = new google.maps.Marker({
+          var marker = new google.maps.Marker({
             map: $scope.map,
             id: busPlate,
             position: position[0],
-            title: busPlate + ' ' + position[1] + ' ' + position[2],
+            title: busPlate,
             icon: {
               url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(markerTemplate)
+            },
+            lastPosition: {
+              stop: $scope.busRouteStopMarkers[position[1]].id,
+              distance: position[2]
             }
           });
+          marker.addListener('click', updateInfoWindow);
+          $scope.busesData[busPlate].marker = marker;
         } else {
           if ($scope.busesData[busPlate].distances.length > 0) { 
             $scope.busesData[busPlate].marker.setPosition(position[0]);
-            $scope.busesData[busPlate].marker.title = busPlate + ' ' + position[1] + ' ' + position[2];
+            $scope.busesData[busPlate].marker.title = busPlate;
+            $scope.busesData[busPlate].marker.lastPosition = {
+              stop: $scope.busRouteStopMarkers[position[1]].id,
+              distance: position[2]
+            };
           } else {
             removeBusMarker(busPlate);
           }
+        }
+
+        if ($scope.busesData[busPlate].marker === $scope.infoWindow.busMarker) {
+          $scope.infoWindow.forceUpdate = new Date();
         }
       }
 
@@ -351,12 +372,12 @@ angular.module('transantiagoScannerApp')
       for (index in busRoute.stops) {
         options = busRoute.stops[index];
 
-        if ($mdMedia('gt-sm')) {
-          options.map = $scope.map;
-        }
+        // if ($mdMedia('gt-sm')) {
+        //   options.map = $scope.map;
+        // }
 
         options.index = index;
-        options.title = index + ' - ' + options.title;
+        options.title = options.title;
         options.opacity = 0.4;
 
         marker = new google.maps.Marker(options);
@@ -451,7 +472,29 @@ angular.module('transantiagoScannerApp')
       console.log('getBusMarkerSvg error', response);
     });
 
+    // InfoWindow template
+    $http({
+      method: 'GET',
+      url: '/views/infowindow_bus.html'
+    }).then(function (response) {
+      $scope.busMarkerInfoWindowTemplate = response.data;
+    }, function (response) {
+      console.log('getBusMarkerInfoWindowTemplate error', response);
+    });
+
     uiGmapGoogleMapApi.then(function () {
+      $scope.infoWindow = new google.maps.InfoWindow();
+      $scope.infoWindow.forceUpdate = new Date();
+
+      $scope.$watch('infoWindow.forceUpdate', function () {
+        if ($scope.busMarkerInfoWindowTemplate !== undefined && $scope.infoWindow.busMarker !== undefined) {
+          var template = $scope.busMarkerInfoWindowTemplate;
+          template = template.replace('{{last_position_stop}}', $scope.infoWindow.busMarker.lastPosition.stop);
+          template = template.replace('{{last_position_distance}}', $scope.infoWindow.busMarker.lastPosition.distance);
+          $scope.infoWindow.setContent(template);
+        }
+      });
+
       $scope.map = new google.maps.Map(document.getElementById('google_map_container'), {
         center: {lat: -33.48, lng: -70.65},
         zoom: 11,
