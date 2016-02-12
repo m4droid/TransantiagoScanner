@@ -73,19 +73,21 @@ var getClosestPointsProjection = function (map, positions, latLng, startIndex) {
 angular.module('transantiagoScannerApp')
   .controller('MainCtrl', function ($scope, $timeout, $http, $templateRequest, $compile, $mdSidenav, $mdToast, $mdMedia, API, uiGmapGoogleMapApi) {
 
-    var pushBusData = function (plate, date, stopIndex, distance) {
+    var pushBusData = function (plate, date, stopCode, stopIndex, distance, status) {
       if ($scope.busesData[plate] === undefined) {
         $scope.busesData[plate] = {
           date: date,
-          distances: [],
+          positions: [],
           marker: null
         };
       }
 
-      $scope.busesData[plate].distances.push({
+      $scope.busesData[plate].positions.push({
         date: date,
+        stopCode: stopCode,
         stopIndex: stopIndex,
-        distance: parseFloat(distance)
+        distance: parseFloat(distance),
+        status: status
       });
     };
 
@@ -97,10 +99,10 @@ angular.module('transantiagoScannerApp')
     };
 
     var getBusPositionFromStop = function (busPlate) {
-      var lastDistanceIndex = $scope.busesData[busPlate].distances.length - 1;
+      var lastPositionIndex = $scope.busesData[busPlate].positions.length - 1;
 
-      var stopIndex = $scope.busesData[busPlate].distances[lastDistanceIndex].stopIndex;
-      var totalDistance = $scope.busesData[busPlate].distances[lastDistanceIndex].distance;
+      var stopIndex = $scope.busesData[busPlate].positions[lastPositionIndex].stopIndex;
+      var totalDistance = $scope.busesData[busPlate].positions[lastPositionIndex].distance;
       var stopPolylineIndex = $scope.busRouteStopMarkers[stopIndex].polylineIndex;
 
       var targetPosition = null;
@@ -125,7 +127,7 @@ angular.module('transantiagoScannerApp')
         }
       }
 
-      return [targetPosition, $scope.busesData[busPlate].distances[lastDistanceIndex].stopIndex, totalDistance];
+      return [targetPosition, $scope.busesData[busPlate].positions[lastPositionIndex].stopIndex, totalDistance];
     };
 
     var getToastPromise = function () {
@@ -140,23 +142,25 @@ angular.module('transantiagoScannerApp')
       return $scope.toastPromise;
     };
 
-    var updateInfoWindowScope = function (marker) {
+    var updateInfoWindowScope = function (busCode) {
       if ($scope.infoWindow.scope === undefined) {
         $scope.infoWindow.scope = $scope.$new(true);
       }
-      $scope.infoWindow.scope.marker = marker;
+
+      $scope.infoWindow.scope = angular.extend($scope.infoWindow.scope, $scope.busesData[busCode]);
+      $scope.infoWindow.busCode = busCode;
       $scope.infoWindow.scope.lastUpdate = new Date();
     };
 
     var openInfoWindow = function () {
-      updateInfoWindowScope(this);
+      updateInfoWindowScope(this.id);
       $scope.$digest();
       $scope.infoWindow.open($scope.map, this);
     };
 
     var setBusesMarkers = function () {
       for (var busPlate in $scope.busesData) {
-        if ($scope.busesData[busPlate].distances.length === 0) {
+        if ($scope.busesData[busPlate].positions.length === 0) {
           removeBusMarker(busPlate);
           continue;
         }
@@ -174,29 +178,20 @@ angular.module('transantiagoScannerApp')
             title: busPlate,
             icon: {
               url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(markerTemplate)
-            },
-            lastPosition: {
-              stop: $scope.busRouteStopMarkers[position[1]].id,
-              distance: position[2]
             }
           });
           marker.addListener('click', openInfoWindow);
           $scope.busesData[busPlate].marker = marker;
         } else {
-          if ($scope.busesData[busPlate].distances.length > 0) { 
+          if ($scope.busesData[busPlate].positions.length > 0) {
             $scope.busesData[busPlate].marker.setPosition(position[0]);
-            $scope.busesData[busPlate].marker.title = busPlate;
-            $scope.busesData[busPlate].marker.lastPosition = {
-              stop: $scope.busRouteStopMarkers[position[1]].id,
-              distance: position[2]
-            };
           } else {
             removeBusMarker(busPlate);
           }
         }
 
-        if ($scope.busesData[busPlate].marker === $scope.infoWindow.busMarker) {
-          updateInfoWindowScope($scope.busesData[busPlate].marker);
+        if (busPlate === $scope.infoWindow.busCode) {
+          updateInfoWindowScope(busPlate);
         }
       }
 
@@ -221,9 +216,11 @@ angular.module('transantiagoScannerApp')
         return;
       }
 
+      var stopCode = $scope.busRouteStopMarkers[stopIndex].id;
+
       $http({
         method: 'GET',
-        url: sprintf(API.getPrediction, $scope.busRouteStopMarkers[stopIndex].id, $scope.selectedBusRoute)
+        url: sprintf(API.getPrediction, stopCode, $scope.selectedBusRoute)
       }).then(function (response) {
         if (response.data.servicios !== undefined && response.data.servicios.item !== undefined) {
           for (var index in response.data.servicios.item) {
@@ -231,8 +228,10 @@ angular.module('transantiagoScannerApp')
               pushBusData(
                 response.data.servicios.item[index].ppubus1,
                 date,
+                stopCode,
                 stopIndex,
-                response.data.servicios.item[index].distanciabus1
+                response.data.servicios.item[index].distanciabus1,
+                response.data.servicios.item[index].codigorespuesta
               );
             }
 
@@ -240,8 +239,10 @@ angular.module('transantiagoScannerApp')
               pushBusData(
                 response.data.servicios.item[index].ppubus2,
                 date,
+                stopCode,
                 stopIndex,
-                response.data.servicios.item[index].distanciabus2
+                response.data.servicios.item[index].distanciabus2,
+                response.data.servicios.item[index].codigorespuesta
               );
             }
           }
@@ -259,7 +260,7 @@ angular.module('transantiagoScannerApp')
       }
 
       for (var busPlate in $scope.busesData) {
-        $scope.busesData[busPlate].distances = [];
+        $scope.busesData[busPlate].positions = [];
       }
 
       if ($scope.toastScope === undefined) {

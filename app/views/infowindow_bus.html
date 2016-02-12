@@ -1,5 +1,16 @@
-<div>
-  <div style="font-weight: bold">Última información</div>
-  <div>Paradero: <span>{{marker.lastPosition.stop}}</span></div>
-  <div>Distancia: <span>{{marker.lastPosition.distance}}</span>m</div>
-</div>
+<table>
+  <thead>
+    <tr>
+      <th>Paradero</th>
+      <th>Distancia</th>
+      <th>Código</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr ng-repeat="position in positions">
+      <td>{{ position.stopCode }}</td>
+      <td>{{ position.distance }}</td>
+      <td>{{ position.status }}</td>
+    </tr>
+  </tbody>
+</table>
