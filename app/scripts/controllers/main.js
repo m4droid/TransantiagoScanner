@@ -42,7 +42,7 @@ var getClosestPointsProjection = function (map, positions, latLng, startIndex) {
   var foundIndex = -1;
   var foundPosition = null;
 
-  for (var i = startIndex; i < positions.length - 1; i++) {
+  for (var i = startIndex; i < positions.length - 1; i += 1) {
     var projectionLatLng = getProjectionLatLng(projection, positions[i], positions[i + 1], latLng);
 
     var middlePoint = getMiddlePosition(positions[i], positions[i + 1]);
@@ -98,36 +98,32 @@ angular.module('transantiagoScannerApp')
       }
     };
 
-    var getBusPositionFromStop = function (busPlate) {
-      var lastPositionIndex = $scope.busesData[busPlate].positions.length - 1;
-
-      var stopIndex = $scope.busesData[busPlate].positions[lastPositionIndex].stopIndex;
-      var totalDistance = $scope.busesData[busPlate].positions[lastPositionIndex].distance;
+    var getBusPositionFromStop = function (stopIndex, distance) {
       var stopPolylineIndex = $scope.busRouteStopMarkers[stopIndex].polylineIndex;
 
       var targetPosition = null;
-      var distance = 0.0;
+      var d = 0.0;
       var positions = $scope.busRouteDirectionPolyline.getPath();
 
-      for (var index = stopPolylineIndex; index >= 1; index--) {
+      for (var index = stopPolylineIndex; index >= 1; index -= 1) {
         var pathDistance = google.maps.geometry.spherical.computeDistanceBetween(
           positions.getAt(index),
           positions.getAt(index - 1)
         );
 
-        if (distance + pathDistance >= totalDistance) {
+        if (d + pathDistance >= distance) {
           targetPosition = google.maps.geometry.spherical.interpolate(
             positions.getAt(index),
             positions.getAt(index - 1),
-            1.0 * (totalDistance - distance) / pathDistance
+            1.0 * (distance - d) / pathDistance
           );
           break;
         } else {
-          distance += pathDistance;
+          d += pathDistance;
         }
       }
 
-      return [targetPosition, $scope.busesData[busPlate].positions[lastPositionIndex].stopIndex, totalDistance];
+      return targetPosition;
     };
 
     var getToastPromise = function () {
@@ -165,16 +161,34 @@ angular.module('transantiagoScannerApp')
           continue;
         }
 
-        var position = getBusPositionFromStop(busPlate);
-
         var markerTemplate = $scope.busMarkerSvgTemplate.replace('{{bus_plate}}', busPlate);
         markerTemplate = markerTemplate.replace('{{bus_color}}', $scope.busRouteColor);
+
+        var polylinePositions = $scope.busRouteDirectionPolyline.getPath().getArray();
+
+        var distancesSum = 0.0;
+        for (var index in $scope.busesData[busPlate].positions) {
+          var a = $scope.busRouteStopMarkers[$scope.busesData[busPlate].positions[0].stopIndex].polylineIndex;
+          var b = $scope.busRouteStopMarkers[$scope.busesData[busPlate].positions[index].stopIndex].polylineIndex;
+
+          var min_ = Math.min(a, b);
+          var max_ = Math.max(a, b);
+
+          distancesSum += google.maps.geometry.spherical.computeLength(
+            polylinePositions.slice(min_, max_ + 1)
+          ) + $scope.busesData[busPlate].positions[index].distance;
+        }
+
+        var avgPosition = getBusPositionFromStop(
+          $scope.busesData[busPlate].positions[0].stopIndex,
+          distancesSum / $scope.busesData[busPlate].positions.length
+        );
 
         if ($scope.busesData[busPlate].marker === null) {
           var marker = new google.maps.Marker({
             map: $scope.map,
             id: busPlate,
-            position: position[0],
+            position: avgPosition,
             title: busPlate,
             icon: {
               url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(markerTemplate)
@@ -184,7 +198,7 @@ angular.module('transantiagoScannerApp')
           $scope.busesData[busPlate].marker = marker;
         } else {
           if ($scope.busesData[busPlate].positions.length > 0) {
-            $scope.busesData[busPlate].marker.setPosition(position[0]);
+            $scope.busesData[busPlate].marker.setPosition(avgPosition);
           } else {
             removeBusMarker(busPlate);
           }
@@ -381,9 +395,7 @@ angular.module('transantiagoScannerApp')
       for (index in busRoute.stops) {
         options = busRoute.stops[index];
 
-        // if ($mdMedia('gt-sm')) {
-        //   options.map = $scope.map;
-        // }
+        // options.map = $scope.map;
 
         options.index = index;
         options.title = options.title;
