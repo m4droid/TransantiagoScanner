@@ -7,13 +7,21 @@
 // use this if you want to recursively match all subfolders:
 // 'test/spec/**/*.js'
 
+var timeGrunt = require('time-grunt');
+var jitGrunt = require('jit-grunt');
+var jshintStylish = require('jshint-stylish');
+var autoprefixerCore = require('autoprefixer-core');
+
+var bower = require('./bower.json');
+
+
 module.exports = function (grunt) {
 
   // Time how long tasks take. Can help when optimizing build times
-  require('time-grunt')(grunt);
+  timeGrunt(grunt);
 
   // Automatically load required Grunt tasks
-  require('jit-grunt')(grunt, {
+  jitGrunt(grunt, {
     useminPrepare: 'grunt-usemin',
     ngtemplates: 'grunt-angular-templates',
     cdnify: 'grunt-google-cdn'
@@ -21,7 +29,7 @@ module.exports = function (grunt) {
 
   // Configurable paths for the application
   var appConfig = {
-    app: require('./bower.json').appPath || 'app',
+    app: bower.appPath || 'app',
     dist: 'dist'
   };
 
@@ -122,7 +130,7 @@ module.exports = function (grunt) {
     jshint: {
       options: {
         jshintrc: '.jshintrc',
-        reporter: require('jshint-stylish')
+        reporter: jshintStylish
       },
       all: {
         src: [
@@ -174,7 +182,7 @@ module.exports = function (grunt) {
     postcss: {
       options: {
         processors: [
-          require('autoprefixer-core')({browsers: ['last 1 version']})
+          autoprefixerCore({browsers: ['last 1 version']})
         ]
       },
       server: {
