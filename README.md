@@ -1,4 +1,5 @@
 # Transantiago Scanner
+[![Build Status](https://travis-ci.org/m4droid/TransantiagoScanner.svg?branch=master)](https://travis-ci.org/m4droid/TransantiagoScanner)
 
 Demo available at http://ts.m4droid.com
 
