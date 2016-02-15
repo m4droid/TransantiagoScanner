@@ -34,16 +34,16 @@
       </div>
     </md-toolbar>
 
-    <section layout="vertical" >
+    <section layout="vertical">
       <md-sidenav class="md-sidenav-left md-whiteframe-z2 sidenav" md-component-id="left" md-is-locked-open="$mdMedia('gt-sm')" flex="25" flex-xs="80" flex-sm="35" ng-class="{'sidenav_gt_sm': $mdMedia('gt-sm'), 'sidenav_sm': ! $mdMedia('gt-sm')}">
-        <md-grid-list class="groups_selector" md-cols="7" md-row-height="1:1" md-gutter="0px">
-          <md-grid-tile ng-repeat="group in ::groups" ng-style="{'background-color': group.color, 'color': group.textColor}">
-            <md-button class="groups_selector_button" ng-click="setGroup(group)">{{ ::group.name }}</md-button>
-          </md-grid-tile>
-        </md-grid-list>
         <md-content ng-controller="SidenavCtrl">
+          <md-grid-list class="groups_selector" md-cols="7" md-row-height="1:1" md-gutter="0px">
+            <md-grid-tile ng-repeat="group in ::groups" ng-style="{'background-color': group.color, 'color': group.textColor}">
+              <md-button class="groups_selector_button" ng-click="setGroup(group)">{{ ::group.name }}</md-button>
+            </md-grid-tile>
+          </md-grid-list>
           <md-list class="no_padding">
-            <md-list-item ng-repeat="busRoute in busRoutes[selectedGroup]">
+            <md-list-item ng-repeat="busRoute in busRoutes | startsWith:selectedGroup">
               <p style="margin: 10px">{{ ::busRoute }}</p>
               <md-button class="md-fab md-mini" aria-label="Ida" ng-click="setBusRoute(busRoute, 0)">
                 <md-icon md-svg-src="/bower_components/material-design-icons/navigation/svg/production/ic_arrow_drop_up_24px.svg"></md-icon>
@@ -94,10 +94,12 @@
 
     <!-- build:js({.tmp,app}) scripts/scripts.js -->
     <script src="scripts/app.js"></script>
+    <script src="scripts/filters/startswith.js"></script>
+    <script src="scripts/services/mapsutils.js"></script>
     <script src="scripts/controllers/main.js"></script>
     <script src="scripts/controllers/sidenav.js"></script>
     <!-- endbuild -->
 
-    <script src='//maps.googleapis.com/maps/api/js?sensor=false'></script>
+    <script src='//maps.googleapis.com/maps/api/js'></script>
 </body>
 </html>

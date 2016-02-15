@@ -8,7 +8,30 @@
  * Controller of the transantiagoScannerApp
  */
 angular.module('transantiagoScannerApp')
-  .controller('SidenavCtrl', function ($scope, $rootScope, $http, API) {
+  .controller('SidenavCtrl', function ($scope, $http, API) {
+
+    $scope.setGroup = function (group) {
+      $scope.selectedGroup = group.name;
+    };
+
+    $scope.groups = [
+      {name: '1', color: '#000000', textColor: '#FFFFFF'},
+      {name: '2', color: '#000000', textColor: '#FFFFFF'},
+      {name: '3', color: '#000000', textColor: '#FFFFFF'},
+      {name: '4', color: '#000000', textColor: '#FFFFFF'},
+      {name: '5', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'B', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'C', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'D', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'E', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'F', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'G', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'H', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'I', color: '#000000', textColor: '#FFFFFF'},
+      {name: 'J', color: '#000000', textColor: '#FFFFFF'}
+    ];
+
+    $scope.selectedGroup = '1';
 
     $scope.busRoutes = [];
 
@@ -16,15 +39,13 @@ angular.module('transantiagoScannerApp')
       method: 'GET',
       url: API.getServices
     }).then(function (response) {
-      $scope.busRoutes = {};
+      var routes = [];
+
       for (var index in response.data) {
-        var busRoute = response.data[index];
-        var group = busRoute[0];
-        if ($scope.busRoutes[group] === undefined) {
-          $scope.busRoutes[group] = [];
-        }
-        $scope.busRoutes[group].push(busRoute);
+        routes.push(response.data[index]);
       }
+
+      $scope.busRoutes = routes;
     }, function (response) {
       console.log('getRoutes error', response);
     });

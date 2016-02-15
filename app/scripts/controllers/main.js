@@ -1,68 +1,5 @@
 'use strict';
 
-// http://stackoverflow.com/questions/1502590/calculate-distance-between-two-points-in-google-maps-v3
-var rad = function (x) {
-  return x * Math.PI / 180;
-};
-
-var getDistance = function (p1, p2) {
-  var R = 6378137; // Earth’s mean radius in meter
-  var dLat = rad(p2.lat() - p1.lat());
-  var dLong = rad(p2.lng() - p1.lng());
-  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(rad(p1.lat())) * Math.cos(rad(p2.lat())) *
-    Math.sin(dLong / 2) * Math.sin(dLong / 2);
-  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  var d = R * c;
-  return d; // returns the distance in meter
-};
-
-var getMiddlePosition = function (latLngA, latLngB) {
-  return new google.maps.LatLng((latLngA.lat() + latLngB.lat()) / 2, (latLngA.lng() + latLngB.lng()) / 2);
-};
-
-var getProjectionLatLng = function (projection, latLngA, latLngB, latLngP) {
-  var pointA = projection.fromLatLngToPoint(latLngA);
-  var pointB = projection.fromLatLngToPoint(latLngB);
-  var pointP = projection.fromLatLngToPoint(latLngP);
-
-  var m1 = 1.0 * (pointB.y - pointA.y) / (pointB.x - pointA.x);
-  var m2 = -1.0 / m1;
-
-  var x = (pointP.y - m2 * pointP.x - pointA.y + m1 * pointA.x) / (m1 - m2);
-  var y = m1 * (x - pointA.x) + pointA.y;
-
-  return projection.fromPointToLatLng(new google.maps.Point(x, y));
-};
-
-var getClosestPointsProjection = function (map, positions, latLng, startIndex) {
-  var projection = map.getProjection();
-
-  var minHeight = Number.MAX_SAFE_INTEGER;
-  var foundIndex = -1;
-  var foundPosition = null;
-
-  for (var i = startIndex; i < positions.length - 1; i += 1) {
-    var projectionLatLng = getProjectionLatLng(projection, positions[i], positions[i + 1], latLng);
-
-    var middlePoint = getMiddlePosition(positions[i], positions[i + 1]);
-
-    var radius = getDistance(positions[i], middlePoint);
-    var distance = getDistance(middlePoint, latLng);
-
-    var height = getDistance(projectionLatLng, latLng);
-
-    if (distance <= 1.2 * radius && height < minHeight) {
-      minHeight = height;
-      foundIndex = i;
-      foundPosition = projectionLatLng;
-    }
-  }
-
-  return [foundIndex, foundPosition];
-};
-
-
 /**
  * @ngdoc function
  * @name transantiagoScannerApp.controller:MainCtrl
@@ -71,7 +8,7 @@ var getClosestPointsProjection = function (map, positions, latLng, startIndex) {
  * Controller of the transantiagoScannerApp
  */
 angular.module('transantiagoScannerApp')
-  .controller('MainCtrl', function ($scope, $timeout, $http, $templateRequest, $compile, $mdSidenav, $mdToast, $mdMedia, API, uiGmapGoogleMapApi) {
+  .controller('MainCtrl', function ($scope, $timeout, $http, $templateRequest, $compile, $mdSidenav, $mdToast, $mdMedia, API, uiGmapGoogleMapApi, MapsUtils) {
 
     var pushBusData = function (plate, date, stopCode, stopIndex, distance, status) {
       if ($scope.busesData[plate] === undefined) {
@@ -356,7 +293,7 @@ angular.module('transantiagoScannerApp')
       var latestIndex = 0;
 
       for (index in busRoute.stops) {
-        var projectionPosition = getClosestPointsProjection(
+        var projectionPosition = MapsUtils.getClosestPointsProjection(
           $scope.map,
           busRoute.polyline,
           new google.maps.LatLng(busRoute.stops[index].position),
@@ -422,10 +359,6 @@ angular.module('transantiagoScannerApp')
       triggerUpdate();
     };
 
-    $scope.setGroup = function (group) {
-      $scope.selectedGroup = group.name;
-    };
-
     $scope.toggleSidenav = function () {
       $mdSidenav('left').toggle();
     };
@@ -462,59 +395,47 @@ angular.module('transantiagoScannerApp')
       }
     };
 
+    var loadTemplates = function () {
+      // Get bus markers SVG
+      $templateRequest('images/markers/marker_bus.svg').then(function (template) {
+        $scope.busMarkerSvgTemplate = template;
+      }, function () {
+        console.log('getBusMarkerSvg error');
+      });
+
+      // InfoWindow template
+      $templateRequest('views/infowindow_bus.html').then(function (template) {
+        $scope.busMarkerInfoWindowTemplate = template;
+      }, function () {
+        console.log('getBusMarkerInfoWindowTemplate error');
+      });
+    };
+
+    var loadMap = function () {
+      uiGmapGoogleMapApi.then(function () {
+        $scope.infoWindow = new google.maps.InfoWindow();
+        $scope.infoWindow.forceUpdate = new Date();
+
+        $scope.$watch('infoWindow.scope.lastUpdate', function () {
+          if ($scope.infoWindow.scope !== undefined) {
+            var contents = $compile($scope.busMarkerInfoWindowTemplate)($scope.infoWindow.scope);
+            $scope.infoWindow.setContent(contents[0]);
+          }
+        });
+
+        $scope.map = new google.maps.Map(document.getElementById('google_map_container'), {
+          center: {lat: -33.48, lng: -70.65},
+          zoom: 11,
+          mapTypeId: google.maps.MapTypeId.ROADMAP,
+          disableDefaultUI: true,
+          rotateControl: false,
+          streetViewControl: false
+        });
+      });
+    };
+
     $scope.$mdMedia = $mdMedia;
 
-    $scope.groups = [
-      {name: '1', color: '#000000', textColor: '#FFFFFF'},
-      {name: '2', color: '#000000', textColor: '#FFFFFF'},
-      {name: '3', color: '#000000', textColor: '#FFFFFF'},
-      {name: '4', color: '#000000', textColor: '#FFFFFF'},
-      {name: '5', color: '#000000', textColor: '#FFFFFF'},
-      {name: 'B', color: '#000000', textColor: '#FFFFFF'},
-      {name: 'C', color: '#000000', textColor: '#FFFFFF'},
-      {name: 'D', color: '#000000', textColor: '#FFFFFF'},
-      {name: 'E', color: '#000000', textColor: '#FFFFFF'},
-      {name: 'F', color: '#000000', textColor: '#FFFFFF'},
-      {name: 'G', color: '#000000', textColor: '#FFFFFF'},
-      {name: 'H', color: '#000000', textColor: '#FFFFFF'},
-      {name: 'I', color: '#000000', textColor: '#FFFFFF'},
-      {name: 'J', color: '#000000', textColor: '#FFFFFF'}
-    ];
-
-    $scope.selectedGroup = '1';
-
-    // Get bus markers SVG
-    $templateRequest('images/markers/marker_bus.svg').then(function (template) {
-      $scope.busMarkerSvgTemplate = template;
-    }, function () {
-      console.log('getBusMarkerSvg error');
-    });
-
-    // InfoWindow template
-    $templateRequest('views/infowindow_bus.html').then(function (template) {
-      $scope.busMarkerInfoWindowTemplate = template;
-    }, function () {
-      console.log('getBusMarkerInfoWindowTemplate error');
-    });
-
-    uiGmapGoogleMapApi.then(function () {
-      $scope.infoWindow = new google.maps.InfoWindow();
-      $scope.infoWindow.forceUpdate = new Date();
-
-      $scope.$watch('infoWindow.scope.lastUpdate', function () {
-        if ($scope.infoWindow.scope !== undefined) {
-          var contents = $compile($scope.busMarkerInfoWindowTemplate)($scope.infoWindow.scope);
-          $scope.infoWindow.setContent(contents[0]);
-        }
-      });
-
-      $scope.map = new google.maps.Map(document.getElementById('google_map_container'), {
-        center: {lat: -33.48, lng: -70.65},
-        zoom: 11,
-        mapTypeId: google.maps.MapTypeId.ROADMAP,
-        disableDefaultUI: true,
-        rotateControl: false,
-        streetViewControl: false
-      });
-    });
+    loadTemplates();
+    loadMap();
   });
