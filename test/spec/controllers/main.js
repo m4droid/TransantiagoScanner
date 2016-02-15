@@ -6,18 +6,33 @@ describe('Controller: MainCtrl', function () {
   beforeEach(module('transantiagoScannerApp'));
 
   var MainCtrl,
-    scope;
+    scope,
+    httpBackend;
 
   // Initialize the controller and a mock scope
-  beforeEach(inject(function ($controller, $rootScope) {
+  beforeEach(inject(function ($controller, $rootScope, $injector) {
     scope = $rootScope.$new();
+
+    httpBackend = $injector.get('$httpBackend');
+    httpBackend.whenGET('images/markers/marker_bus.svg').respond('fake_marker_bus_content');
+    httpBackend.whenGET('views/infowindow_bus.html').respond('fake_infowindow_bus_content');
+
     MainCtrl = $controller('MainCtrl', {
-      $scope: scope
+      $scope: scope,
       // place here mocked dependencies
+      $httpBackend: httpBackend
     });
   }));
 
-  it('should attach a list of awesomeThings to the scope', function () {
-    expect(MainCtrl.awesomeThings.length).toBe(3);
+  /* Test init */
+  it('should set $mdMedia function into scope', function () {
+    expect(typeof(scope.$mdMedia)).toBe('function');
+  });
+
+  it('should load templates', function () {
+    httpBackend.flush();
+
+    expect(scope.busMarkerSvgTemplate).toBe('fake_marker_bus_content');
+    expect(scope.busMarkerInfoWindowTemplate).toBe('fake_infowindow_bus_content');
   });
 });
