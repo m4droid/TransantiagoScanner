@@ -41,9 +41,9 @@ angular.module('transantiagoScannerApp')
     }).then(function (response) {
       var routes = [];
 
-      for (var index in response.data) {
-        routes.push(response.data[index]);
-      }
+      angular.forEach(response.data, function (route) {
+        routes.push(route);
+      });
 
       $scope.busRoutes = routes;
     }, function (response) {

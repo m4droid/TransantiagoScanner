@@ -94,7 +94,7 @@ angular.module('transantiagoScannerApp')
     var setBusesMarkers = function () {
       for (var busPlate in $scope.busesData) {
         if ( ! $scope.busesData.hasOwnProperty(busPlate)) {
-          return;
+          continue;
         }
 
         if ($scope.busesData[busPlate].positions.length === 0) {
@@ -108,17 +108,17 @@ angular.module('transantiagoScannerApp')
         var polylinePositions = $scope.busRouteDirectionPolyline.getPath().getArray();
 
         var distancesSum = 0.0;
-        for (var index in $scope.busesData[busPlate].positions) {
+        angular.forEach($scope.busesData[busPlate].positions, function (position, index) {
           var a = $scope.busRouteStopMarkers[$scope.busesData[busPlate].positions[0].stopIndex].polylineIndex;
-          var b = $scope.busRouteStopMarkers[$scope.busesData[busPlate].positions[index].stopIndex].polylineIndex;
+          var b = $scope.busRouteStopMarkers[position.stopIndex].polylineIndex;
 
           var min_ = Math.min(a, b);
           var max_ = Math.max(a, b);
 
           distancesSum += google.maps.geometry.spherical.computeLength(
             polylinePositions.slice(min_, max_ + 1)
-          ) + $scope.busesData[busPlate].positions[index].distance;
-        }
+          ) + position.distance;
+        });
 
         var avgPosition = getBusPositionFromStop(
           $scope.busesData[busPlate].positions[0].stopIndex,
@@ -333,8 +333,8 @@ angular.module('transantiagoScannerApp')
       var marker = null;
 
       $scope.busRouteStopMarkers = [];
-      for (index in busRoute.stops) {
-        options = busRoute.stops[index];
+      angular.forEach(busRoute.stops, function (stopOptions) {
+        options = stopOptions;
 
         // options.map = $scope.map;
 
@@ -344,7 +344,7 @@ angular.module('transantiagoScannerApp')
 
         marker = new google.maps.Marker(options);
         $scope.busRouteStopMarkers.push(marker);
-      }
+      });
 
       $scope.selectedBusRoute = busRouteCode;
       $scope.selectedBusRouteDirection = busDirection;
