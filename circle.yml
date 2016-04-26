@@ -1,0 +1,11 @@
+machine:
+  node:
+    version: 5.7.0
+  ruby:
+    version: 2.3.0
+dependencies:
+  pre:
+    - gem install compass
+    - npm install -g bower grunt-cli
+    - bower install
+    - 'cp app/scripts/configs/config.js{.default,}'
