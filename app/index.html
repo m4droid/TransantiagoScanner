@@ -19,7 +19,7 @@
     <md-toolbar>
       <div class="md-toolbar-tools">
         <md-button class="md-icon-button" aria-label="Menú" ng-click="toggleSidenav()">
-          <md-icon md-svg-icon="/bower_components/material-design-icons/navigation/svg/production/ic_menu_24px.svg"></md-icon>
+          <md-icon md-svg-icon="images/svg/ic_menu_24px.svg"></md-icon>
         </md-button>
         <h2 class="title">
           <div>Transantiago</div>
@@ -46,10 +46,10 @@
             <md-list-item ng-repeat="busRoute in busRoutes | startsWith:selectedGroup">
               <p style="margin: 10px">{{ ::busRoute }}</p>
               <md-button class="md-fab md-mini" aria-label="Ida" ng-click="setBusRoute(busRoute, 0)">
-                <md-icon md-svg-src="/bower_components/material-design-icons/navigation/svg/production/ic_arrow_drop_up_24px.svg"></md-icon>
+                <md-icon md-svg-src="images/svg/ic_arrow_drop_up_24px.svg"></md-icon>
               </md-button>
               <md-button class="md-fab md-mini md-primary" aria-label="Regreso" ng-click="setBusRoute(busRoute, 1)">
-                <md-icon md-svg-src="/bower_components/material-design-icons/navigation/svg/production/ic_arrow_drop_down_24px.svg"></md-icon>
+                <md-icon md-svg-src="images/svg/ic_arrow_drop_down_24px.svg"></md-icon>
               </md-button>
               <!--md-button class="md-fab md-mini md-warn" aria-label="Favorito" ng-click="setBusRouteFavorite(busRoute)">
                 <md-icon md-svg-src="/bower_components/material-design-icons/action/svg/production/ic_favorite_24px.svg"></md-icon>
