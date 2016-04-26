@@ -1,7 +1,7 @@
 language: node_js
 node_js:
-  - 'iojs'
-  - '4.1'
+  - '5.1'
+  - '4.2'
 before_script:
   - gem update --system
   - gem install compass
