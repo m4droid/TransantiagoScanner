@@ -69,9 +69,9 @@ def bower_install():
 
 
 def set_config_file():
-    print(yellow('\nSetting config file'))
     with shell_env(HOME=env.home), cd('{0:s}/repos/{1:s}'.format(env.home, GIT_REPO['name'])):
         if not exists('app/scripts/configs/config.js'):
+            print(yellow('\nSetting config file'))
             run('cp app/scripts/configs/config.js{.default,}')
 
 
