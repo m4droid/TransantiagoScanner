@@ -9,3 +9,8 @@ dependencies:
     - npm install -g bower grunt-cli
     - bower install
     - 'cp app/scripts/configs/config.js{.default,}'
+deployment:
+  production:
+    branch: master
+    commands:
+      - fab production deploy
