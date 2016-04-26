@@ -35,8 +35,5 @@ angular
       });
   })
   .config(function (uiGmapGoogleMapApiProvider) {
-    uiGmapGoogleMapApiProvider.configure({
-      v: '3.22',
-      libraries: 'geometry'
-    });
+    uiGmapGoogleMapApiProvider.configure(configs.uiGmapGoogleMap);
   });

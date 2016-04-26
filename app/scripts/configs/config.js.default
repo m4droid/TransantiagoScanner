@@ -1,0 +1,6 @@
+var configs = {
+  uiGmapGoogleMap: {
+    v: '3.23',
+    libraries: 'geometry'
+  }
+};
