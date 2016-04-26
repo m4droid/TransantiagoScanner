@@ -16,7 +16,7 @@ DEPLOY_TIMESTAMP = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def production():
-    env.hosts = ['www.cadcc.cl']
+    env.hosts = ['ts.m4droid.com']
     env.user = 'tscanner'
     env.branch = 'master'
     env.home = '/home/{0:s}'.format(env.user)

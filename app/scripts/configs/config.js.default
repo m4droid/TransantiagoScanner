@@ -1,3 +1,6 @@
+'use strict';
+/*exported configs */
+
 var configs = {
   uiGmapGoogleMap: {
     v: '3.23',
