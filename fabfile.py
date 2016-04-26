@@ -4,6 +4,7 @@ from fabric.api import env
 from fabric.colors import yellow
 from fabric.context_managers import cd, shell_env
 from fabric.operations import run
+from fabric.contrib.files import exists
 
 
 GIT_REPO = {
@@ -28,6 +29,7 @@ def deploy():
     repo_activate_version()
     npm_install()
     bower_install()
+    set_config_file()
     grunt_build()
 
 
@@ -64,6 +66,13 @@ def bower_install():
     with shell_env(HOME=env.home), cd('{0:s}/repos/{1:s}'.format(env.home, GIT_REPO['name'])):
         run('bower --config.interactive=false cache clean')
         run('bower --config.interactive=false install')
+
+
+def set_config_file():
+    print(yellow('\nSetting config file'))
+    with shell_env(HOME=env.home), cd('{0:s}/repos/{1:s}'.format(env.home, GIT_REPO['name'])):
+        if not exists('app/scripts/configs/config.js'):
+            run('cp app/scripts/configs/config.js{.default,}')
 
 
 def grunt_build():
