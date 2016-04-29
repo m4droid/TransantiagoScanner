@@ -22,3 +22,6 @@ Running `grunt test` will run the unit tests with karma.
 	pip install fabric
 
 	fab production deploy
+
+## License
+MIT
