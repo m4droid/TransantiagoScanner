@@ -1,13 +1,6 @@
 // bower:scss
 // endbower
 
-.browsehappy {
-  margin: 0.2em 0;
-  background: #ccc;
-  color: #000;
-  padding: 0.2em 0;
-}
-
 body {
   padding: 0;
 }
@@ -32,11 +25,11 @@ body {
   height: calc(100vh - 64px);
 }
 
-.google_map_container_sm {
+.map_container_sm {
   height: calc(100vh - 72px);
 }
 
-.google_map_container_gt_sm {
+.map_container_gt_sm {
   height: calc(100vh - 80px);
 }
 

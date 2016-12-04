@@ -13,6 +13,7 @@
   "globals": {
     "angular": false,
     "google": false,
-    "sprintf": false
+    "sprintf": false,
+    "L": false
   }
 }

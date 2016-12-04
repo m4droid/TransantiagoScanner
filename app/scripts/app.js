@@ -16,13 +16,13 @@ angular
     'ngResource',
     'ngRoute',
     'ngSanitize',
-    'ngMaterial',
-    'uiGmapgoogle-maps'
+    'ngMaterial'
   ])
   .constant('API', {
     getServices: 'http://200.29.15.107/rest_test2/getservicios/all',
     getRoute: 'http://200.29.15.107/rest_test2/getrecorrido/%s',
-    getPrediction: 'http://200.29.15.107/predictor/prediccion?codsimt=%s&codser=%s'
+    getPrediction: 'http://200.29.15.107/predictor/prediccion?codsimt=%s&codser=%s',
+    getStops: 'http://200.29.15.107/restservice/rest/getpuntoparada?lat=%s&lon=%s&bip=0'
   })
   .config(function ($routeProvider) {
     $routeProvider
@@ -35,6 +35,10 @@ angular
         redirectTo: '/'
       });
   })
-  .config(function (uiGmapGoogleMapApiProvider) {
-    uiGmapGoogleMapApiProvider.configure(configs.uiGmapGoogleMap);
+  .config(function ($mdGestureProvider) {
+    $mdGestureProvider.skipClickHijack();
   });
+  // .config(function (uiGmapGoogleMapApiProvider) {
+  //   uiGmapGoogleMapApiProvider.configure(configs.uiGmapGoogleMap);
+  // })
+  ;

@@ -27,13 +27,13 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="11.2"
-     inkscape:cx="29.83079"
-     inkscape:cy="24.112628"
+     inkscape:cx="29.121707"
+     inkscape:cy="17.601935"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
-     inkscape:window-width="1280"
-     inkscape:window-height="751"
+     inkscape:window-width="1920"
+     inkscape:window-height="1031"
      inkscape:window-x="0"
      inkscape:window-y="1"
      inkscape:window-maximized="1"
@@ -67,22 +67,36 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:39.08597946px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="3.7000849"
-       y="1062.9199"
+       x="1.0891153"
+       y="1055.1296"
        class="bus_plate_text"
        sodipodi:linespacing="125%"
        id="text9"
-       transform="scale(1.0264788,0.97420422)"><tspan
+       transform="scale(1.0264788,0.97420424)"><tspan
          sodipodi:role="line"
          id="tspan4144"
-         x="3.7000849"
-         y="1062.9199"
-         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:12.21436882px;font-family:monospace;-inkscape-font-specification:'monospace Bold';fill:#ffffff">{{bus_plate}}</tspan></text>
+         x="1.0891153"
+         y="1055.1296"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:10px;font-family:monospace;-inkscape-font-specification:'monospace Bold';fill:#ffffff">{{bus_service}}</tspan></text>
     <path
        style="fill:{{bus_color}};fill-rule:evenodd;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        d="m 54.000084,1018.6697 6,0 0,6.0003 z"
        id="path4136"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="cccc" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:39.08597946px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="1.0891153"
+       y="1067.3904"
+       class="bus_plate_text"
+       sodipodi:linespacing="125%"
+       id="text9-0"
+       transform="scale(1.0264788,0.97420424)"><tspan
+         sodipodi:role="line"
+         id="tspan4144-9"
+         x="1.0891153"
+         y="1067.3904"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:10px;font-family:monospace;-inkscape-font-specification:'monospace Bold';fill:#ffffff">{{bus_plate}}</tspan></text>
   </g>
 </svg>

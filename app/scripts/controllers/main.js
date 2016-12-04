@@ -8,18 +8,46 @@
  * Controller of the transantiagoScannerApp
  */
 angular.module('transantiagoScannerApp')
-  .controller('MainCtrl', function ($scope, $timeout, $http, $templateRequest, $compile, $mdSidenav, $mdToast, $mdMedia, API, uiGmapGoogleMapApi, MapsUtils) {
+  .controller('MainCtrl', function ($scope, $window, $timeout, $http, $templateRequest, $compile, $mdSidenav, $mdToast, $mdMedia, API, MapsUtils) {
 
-    var pushBusData = function (plate, date, stopCode, stopIndex, distance, status) {
-      if ($scope.busesData[plate] === undefined) {
-        $scope.busesData[plate] = {
-          date: date,
+    var resetClosestStops = function () {
+      if (Object.keys($scope.closestStops).length > 0) {
+        angular.forEach($scope.closestStops, function (stopMarker, stop) {
+          $scope.closestStops[stop].remove();
+        });
+
+        $scope.closestStops = {};
+      }
+    }
+
+    var resetServicesData = function () {
+      if (Object.keys($scope.servicesData).length > 0) {
+        angular.forEach($scope.servicesData, function (serviceData, serviceCode) {
+          if ($scope.servicesData[serviceCode].polyline !== undefined) {
+            $scope.servicesData[serviceCode].polyline.remove();
+          }
+
+          if ($scope.servicesData[serviceCode].buses !== undefined) {
+            angular.forEach($scope.servicesData[serviceCode].buses, function (bus) {
+              if (bus.marker !== null) {  
+                bus.marker.remove();
+              }
+            });
+          }
+        });
+      }
+    };
+
+    var pushBusData = function (service, plate, date, stopCode, stopIndex, distance, status) {
+      if ($scope.servicesData[service.code].buses[plate] === undefined) {
+        $scope.servicesData[service.code].buses[plate] = {
           positions: [],
-          marker: null
+          marker: null,
+          color: service.color
         };
       }
 
-      $scope.busesData[plate].positions.push({
+      $scope.servicesData[service.code].buses[plate].positions.push({
         date: date,
         stopCode: stopCode,
         stopIndex: stopIndex,
@@ -28,32 +56,32 @@ angular.module('transantiagoScannerApp')
       });
     };
 
-    var removeBusMarker = function (busPlate) {
-      if ($scope.busesData[busPlate].marker !== null) {
-        $scope.busesData[busPlate].marker.setMap(null);
-        $scope.busesData[busPlate].marker = null;
+    var removeBusMarker = function (service, busPlate) {
+      if ($scope.servicesData[service.code].buses[busPlate].marker !== null) {
+        $scope.servicesData[service.code].buses[busPlate].marker.remove();
+        $scope.servicesData[service.code].buses[busPlate].marker = null;
       }
     };
 
-    var getBusPositionFromStop = function (stopIndex, distance) {
-      var stopPolylineIndex = $scope.busRouteStopMarkers[stopIndex].polylineIndex;
+    var getBusPositionFromStop = function (service, stopIndex, targetDistance) {
+      var stopPolylineIndex = $scope.servicesData[service.code].stops[stopIndex].polylineIndex;
 
       var targetPosition = null;
       var d = 0.0;
-      var positions = $scope.busRouteDirectionPolyline.getPath();
+
+      var positions = $scope.servicesData[service.code].polyline.getLatLngs();
 
       for (var index = stopPolylineIndex; index >= 1; index -= 1) {
-        var pathDistance = google.maps.geometry.spherical.computeDistanceBetween(
-          positions.getAt(index),
-          positions.getAt(index - 1)
-        );
+        var pathDistance = positions[index].distanceTo(positions[index - 1]);
 
-        if (d + pathDistance >= distance) {
-          targetPosition = google.maps.geometry.spherical.interpolate(
-            positions.getAt(index),
-            positions.getAt(index - 1),
-            1.0 * (distance - d) / pathDistance
-          );
+        if (d + pathDistance >= targetDistance) {
+          targetPosition = positions[index];
+          // TODO: Interpolate position
+          // targetPosition = google.maps.geometry.spherical.interpolate(
+          //   positions.getAt(index),
+          //   positions.getAt(index - 1),
+          //   1.0 * (distance - d) / pathDistance
+          // );
           break;
         } else {
           d += pathDistance;
@@ -75,111 +103,95 @@ angular.module('transantiagoScannerApp')
       return $scope.toastPromise;
     };
 
-    var updateInfoWindowScope = function (busCode) {
-      if ($scope.infoWindow.scope === undefined) {
-        $scope.infoWindow.scope = $scope.$new(true);
+    var getPolylineDistance = function (latLngs) {
+      var d = 0;
+      for (var i = 1; i < latLngs.length; i += 1) {
+        d += latLngs[i].distanceTo(latLngs[i - 1]);
       }
-
-      $scope.infoWindow.scope = angular.extend($scope.infoWindow.scope, $scope.busesData[busCode]);
-      $scope.infoWindow.busCode = busCode;
-      $scope.infoWindow.scope.lastUpdate = new Date();
+      return d / 1000;
     };
 
-    var openInfoWindow = function () {
-      updateInfoWindowScope(this.id);
-      $scope.$digest();
-      $scope.infoWindow.open($scope.map, this);
-    };
-
-    var setBusesMarkers = function () {
-      angular.forEach($scope.busesData, function (busData, busPlate) {
+    var setBusesMarkers = function (service) {
+      angular.forEach($scope.servicesData[service.code].buses, function (busData, busPlate) {
         if (busData.positions.length === 0) {
-          removeBusMarker(busPlate);
+          removeBusMarker(service, busPlate);
           return;
         }
 
-        var markerTemplate = $scope.busMarkerSvgTemplate.replace('{{bus_plate}}', busPlate);
-        markerTemplate = markerTemplate.replace('{{bus_color}}', $scope.busRouteColor);
+        var markerTemplate = $scope.busMarkerSvgTemplate.replace('{{bus_service}}', service.code);
+        markerTemplate = markerTemplate.replace('{{bus_color}}', busData.color);
+        markerTemplate = markerTemplate.replace('{{bus_plate}}', busPlate);
 
-        var polylinePositions = $scope.busRouteDirectionPolyline.getPath().getArray();
+        var polylinePositions = $scope.servicesData[service.code].polyline.getLatLngs();
 
         var distancesSum = 0.0;
         angular.forEach(busData.positions, function (position) {
-          var a = $scope.busRouteStopMarkers[busData.positions[0].stopIndex].polylineIndex;
-          var b = $scope.busRouteStopMarkers[position.stopIndex].polylineIndex;
+          var a = $scope.servicesData[service.code].stops[busData.positions[0].stopIndex].polylineIndex;
+          var b = $scope.servicesData[service.code].stops[position.stopIndex].polylineIndex;
 
           var min_ = Math.min(a, b);
           var max_ = Math.max(a, b);
 
-          distancesSum += google.maps.geometry.spherical.computeLength(
-            polylinePositions.slice(min_, max_ + 1)
-          ) + position.distance;
+          distancesSum += getPolylineDistance(polylinePositions.slice(min_, max_ + 1)) + position.distance;
         });
 
         var avgPosition = getBusPositionFromStop(
+          service,
           busData.positions[0].stopIndex,
           distancesSum / busData.positions.length
         );
 
+        if (avgPosition === null) {
+          console.log('Null average position', busPlate);
+        }
+
         if (busData.marker === null) {
-          var marker = new google.maps.Marker({
-            map: $scope.map,
-            id: busPlate,
-            position: avgPosition,
-            title: busPlate,
-            icon: {
-              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(markerTemplate)
+          var marker = new L.Marker(
+            avgPosition,
+            {
+              id: busPlate,
+              title: busPlate,
+              icon: L.icon({
+                iconUrl: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(markerTemplate),
+                iconAnchor: [30, 35],
+              })
             }
-          });
-          marker.addListener('click', openInfoWindow);
+          );
+
           busData.marker = marker;
+
+          marker.addTo($scope.map);
         } else {
           if (busData.positions.length > 0) {
-            busData.marker.setPosition(avgPosition);
+            busData.marker.setLatLng(avgPosition);
           } else {
-            removeBusMarker(busPlate);
+            removeBusMarker(service, busPlate);
           }
         }
-
-        if (busPlate === $scope.infoWindow.busCode) {
-          updateInfoWindowScope(busPlate);
-        }
       });
-
-      $mdToast.hide($scope.toastPromise);
-      $scope.updateTimeout = $timeout(triggerUpdate, 60 * 1000);
-
-      delete $scope.toastScope;
-      delete $scope.toastPromise;
     };
 
-    var getStopsInfo = function (date, stopIndex) {
+    var getServiceBuses = function (service, date, stopIndex) {
+      if ($scope.selectedStop === undefined) {
+        return;
+      }
+
       if (stopIndex < 0) {
-        setBusesMarkers();
+        setBusesMarkers(service);
         return;
       }
 
-      var percentage = parseInt(
-        100.0 * ($scope.busRouteStopMarkers.length - stopIndex - 1) / ($scope.busRouteStopMarkers.length - 1),
-        10
-      );
-      $scope.toastScope.percentage = percentage;
-
-      if ( ! $scope.busRouteStopMarkers[stopIndex].valid) {
-        getStopsInfo(date, stopIndex - 1);
-        return;
-      }
-
-      var stopCode = $scope.busRouteStopMarkers[stopIndex].id;
+      var stopCode = $scope.servicesData[service.code].stops[stopIndex].code;
 
       $http({
         method: 'GET',
-        url: sprintf(API.getPrediction, stopCode, $scope.selectedBusRoute)
+        url: sprintf(API.getPrediction, stopCode, service.code)
       }).then(function (response) {
         if (response.data.servicios !== undefined && response.data.servicios.item !== undefined) {
           angular.forEach(response.data.servicios.item, function (serviceItem) {
             if (serviceItem.ppubus1 !== undefined) {
               pushBusData(
+                service,
                 serviceItem.ppubus1,
                 date,
                 stopCode,
@@ -191,6 +203,7 @@ angular.module('transantiagoScannerApp')
 
             if (serviceItem.ppubus2 !== undefined) {
               pushBusData(
+                service,
                 serviceItem.ppubus2,
                 date,
                 stopCode,
@@ -201,30 +214,11 @@ angular.module('transantiagoScannerApp')
             }
           });
         }
-        getStopsInfo(date, stopIndex - 1);
+        getServiceBuses(service, date, stopIndex - 1);
       }, function (response) {
         console.log('getStopData error', response);
-        getStopsInfo(date, stopIndex - 1);
+        getServiceBuses(service, date, stopIndex - 1);
       });
-    };
-
-    var triggerUpdate = function () {
-      if ($scope.busesData === undefined) {
-        $scope.busesData = {};
-      }
-
-      angular.forEach($scope.busesData, function (busData) {
-        busData.positions = [];
-      });
-
-      if ($scope.toastScope === undefined) {
-        $scope.toastScope = $scope.$new(true);
-      }
-      $scope.toastScope.text = 'Actualizando buses';
-      $scope.toastScope.percentage = 0;
-
-      getToastPromise();
-      getStopsInfo(new Date(), $scope.busRouteStopMarkers.length - 1);
     };
 
     var getBusRouteData = function (busRoute, busDirection) {
@@ -238,39 +232,37 @@ angular.module('transantiagoScannerApp')
       });
     };
 
-    var setBusRoutePolyline = function (response, busRouteCode, busDirection) {
+    var setServicePolyline = function (stop, service, serviceData) {
+      if ($scope.selectedStop === undefined) {
+        return;
+      }
+      
       var index = 0;
-
-      if ($scope.busRouteDirectionPolyline !== undefined) {
-        $scope.busRouteDirectionPolyline.setMap(null);
-        $scope.busRouteDirectionPolyline = undefined;
-      }
-
-      if ($scope.busRouteStopMarkers !== undefined) {
-        angular.forEach($scope.busRouteStopMarkers, function (stopMarker) {
-          stopMarker.setMap(null);
-        });
-
-        $scope.busRouteDirectionEdges = undefined;
-        $scope.busRouteStopMarkers = undefined;
-      }
-
-      var busRouteData = response.data;
-
-      var busRoute = {
-        polyline: [],
-        stops: []
-      };
 
       var minLat = Number.POSITIVE_INFINITY;
       var minLng = Number.POSITIVE_INFINITY;
       var maxLat = Number.NEGATIVE_INFINITY;
       var maxLng = Number.NEGATIVE_INFINITY;
 
-      angular.forEach(busRouteData[busDirection].shapes, function (shape) {
+      // Detect direction
+      var direction = 0;
+
+      for (var d = 0; d < 2; d += 1) {
+        for (var i = 0; i < serviceData[d].paradas.length; i += 1) {
+          if (serviceData[d].paradas[i].codSimt === stop.code) {
+            direction = d;
+            break;
+          }
+        }
+      }
+
+      var polylinePositions = [];
+
+      angular.forEach(serviceData[direction].shapes, function (shape) {
         var lat = parseFloat(shape.latShape);
         var lng = parseFloat(shape.lonShape);
-        busRoute.polyline.push(new google.maps.LatLng({lat: lat, lng: lng}));
+
+        polylinePositions.push(new L.LatLng(lat, lng));
 
         minLat = Math.min(lat, minLat);
         minLng = Math.min(lng, minLng);
@@ -278,126 +270,65 @@ angular.module('transantiagoScannerApp')
         maxLng = Math.max(lng, maxLng);
       });
 
-      angular.forEach(busRouteData[busDirection].paradas, function (stopData) {
-        busRoute.stops.push({
-          id: stopData.codSimt,
-          position: {
-            lat: parseFloat(stopData.stop.stopCoordenadaX),
-            lng: parseFloat(stopData.stop.stopCoordenadaY)
-          },
-          title: stopData.codSimt,
-          icon: {
-            url: '/images/markers/bus_stop_small.png',
-            size: new google.maps.Size(10, 11)
+      angular.forEach(serviceData[direction].paradas, function (stopData) {
+        var marker = L.marker(
+          [parseFloat(stopData.stop.stopCoordenadaX), parseFloat(stopData.stop.stopCoordenadaY)],
+          {
+            id: stopData.codSimt,
+            title: stopData.codSimt
           }
-        });          
+        );
+        marker.code = stopData.codSimt;
+
+        $scope.servicesData[service.code].stops.push(marker);
       });
 
       var latestIndex = 0;
+      var stopMarker = null;
 
-      angular.forEach(busRoute.stops, function (stop) {
-        var projectionPosition = MapsUtils.getClosestPointsProjection(
-          $scope.map,
-          busRoute.polyline,
-          new google.maps.LatLng(stop.position),
+      for (var i = 0; i < $scope.servicesData[service.code].stops.length; i += 1) {
+        var projectionPosition = MapsUtils.getClosestPointProjection(
+          $scope.servicesData[service.code].stops[i].getLatLng(),
+          polylinePositions,
           latestIndex
         );
 
         if (projectionPosition !== null && projectionPosition[0] !== -1) {
-          stop.valid = true;
-          stop.polylineIndex = projectionPosition[0] + 1;
-          busRoute.polyline.splice(projectionPosition[0] + 1, 0, new google.maps.LatLng(stop.position));
+          $scope.servicesData[service.code].stops[i].valid = true;
+          $scope.servicesData[service.code].stops[i].polylineIndex = projectionPosition[0] + 1;
+          polylinePositions.splice(projectionPosition[0] + 1, 0, $scope.servicesData[service.code].stops[i].getLatLng());
           latestIndex = projectionPosition[0];
+
+          if ($scope.servicesData[service.code].stops[i].code === stop.code) {
+            stopMarker = $scope.servicesData[service.code].stops[i];
+            break;
+          }
         } else {
-          stop.valid = false;
-          console.log('Projection not found for stop', stop.title);
+          $scope.servicesData[service.code].stops[i].valid = false;
+          console.log('Projection not found for stop', $scope.servicesData[service.code].stops[i].code);
         }
-      });
-
-      $scope.busRouteColor = busRouteData[busDirection].color;
-
-      $scope.busRouteDirectionPolyline = new google.maps.Polyline({
-        path: busRoute.polyline,
-        strokeColor: $scope.busRouteColor,
-        strokeOpacity: 1.0,
-        strokeWeight: 3,
-        clickable: false,
-        draggable: false,
-        editable: false
-      });
-
-      $scope.busRouteDirectionPolyline.setMap($scope.map);
-
-      var options = {};
-      var marker = null;
-
-      $scope.busRouteStopMarkers = [];
-      angular.forEach(busRoute.stops, function (stopOptions) {
-        options = stopOptions;
-
-        // options.map = $scope.map;
-
-        options.index = index;
-        options.title = options.title;
-        options.opacity = 0.4;
-
-        marker = new google.maps.Marker(options);
-        $scope.busRouteStopMarkers.push(marker);
-      });
-
-      $scope.selectedBusRoute = busRouteCode;
-      $scope.selectedBusRouteDirection = busDirection;
-      $scope.selectedBusRouteDirectionFrom = busRouteData[busDirection].destino;
-      $scope.selectedBusRouteDirectionTo = busRouteData[Math.abs(busDirection - 1)].destino;
-      if ($scope.selectedBusRouteDirectionName !== undefined) {
-        $scope.selectedBusRouteDirectionName = $scope.selectedBusRouteDirectionName.trim();
       }
 
-      var routeBounds = new google.maps.LatLngBounds(
-        new google.maps.LatLng(minLat, minLng),
-        new google.maps.LatLng(maxLat, maxLng)
-      );
-      $scope.map.fitBounds(routeBounds);
-
-      triggerUpdate();
-    };
-
-    $scope.toggleSidenav = function () {
-      $mdSidenav('left').toggle();
-    };
-
-    $scope.setBusRoute = function (busRoute, busDirection) {
-      if (busRoute === $scope.selectedBusRoute && busDirection === $scope.selectedBusRouteDirection) {
+      // If there's no polyline projection to stop
+      if (stopMarker === null) {
         return;
       }
 
-      // busRoute = 'H05';
+      polylinePositions.splice(stopMarker.polylineIndex + 1, polylinePositions.length - stopMarker.polylineIndex - 1);
 
-      if ($scope.updateTimeout !== undefined) {
-        $timeout.cancel($scope.updateTimeout);
-      }
-
-      for (var busPlate in $scope.busesData) {
-        if ($scope.busesData.hasOwnProperty(busPlate)) {
-          removeBusMarker(busPlate);
+      var polyline = L.polyline(
+        polylinePositions,
+        {
+          color: service.color,
+          weight: 3,
+          opacity: 1.0,
+          interactive: false
         }
-      }
-      $scope.busesData = {};
+      );
+      $scope.servicesData[service.code].polyline = polyline;
+      polyline.addTo($scope.map);
 
-      if ($scope.toastScope === undefined) {
-        $scope.toastScope = $scope.$new(true);
-      }
-      $scope.toastScope.text = 'Obteniendo ruta';
-      $scope.toastScope.percentage = 0;
-
-      if ( ! $mdMedia('gt-sm')) {
-        getToastPromise();
-        $mdSidenav('left').toggle().then(function () {
-          getBusRouteData(busRoute, busDirection);
-        });
-      } else {
-        getBusRouteData(busRoute, busDirection);
-      }
+      getServiceBuses(service, new Date(), $scope.servicesData[service.code].stops.indexOf(stopMarker));
     };
 
     var loadTemplates = function () {
@@ -408,35 +339,180 @@ angular.module('transantiagoScannerApp')
         console.log('getBusMarkerSvg error');
       });
 
-      // InfoWindow template
-      $templateRequest('views/infowindow_bus.html').then(function (template) {
-        $scope.busMarkerInfoWindowTemplate = template;
+      // Popup stop
+      $templateRequest('views/popup_stop.html').then(function (template) {
+        $scope.popupStopTemplate = template;
       }, function () {
-        console.log('getBusMarkerInfoWindowTemplate error');
+        console.log('getpopupStopTemplate error');
+      });
+    };
+
+    var triggerUpdate = function () {
+      if (Object.keys($scope.servicesData).length > 0) {
+        angular.forEach($scope.servicesData, function (_, serviceCode) {
+          if ($scope.servicesData[serviceCode].buses !== undefined) {
+            angular.forEach($scope.servicesData[serviceCode].buses, function (bus) {
+              bus.positions = [];
+            });
+          }
+        });
+      }
+
+      angular.forEach($scope.selectedStop.services, function (service) {
+        $http({
+          method: 'GET',
+          url: sprintf(API.getRoute, service.code)
+        }).then(function (response) {
+          setServicePolyline($scope.selectedStop, service, response.data);
+        }, function (response) {
+          console.log('getStopBuses error', response);
+        });
+      });
+
+      if ($scope.updateTimeout !== undefined) {
+        $timeout.cancel($scope.updateTimeout);
+      }
+
+      $scope.updateTimeout = $timeout(triggerUpdate, 60 * 1000);
+    };
+
+    var hideOtherStops = function () {
+      if (Object.keys($scope.closestStops).length > 0) {
+        angular.forEach($scope.closestStops, function (marker, stopCode) {
+          if (stopCode !== $scope.selectedStop.code) {
+            marker.remove();
+          }
+        });
+      }
+    };
+
+    var getStopBuses = function (stop) {
+      $scope.map.closePopup();
+
+      resetServicesData();
+
+      $scope.servicesData = {};
+      $scope.selectedStop = stop;
+
+      angular.forEach(stop.services, function (service) {
+        $scope.servicesData[service.code] = {
+          stops: [],
+          buses: {}
+        };
+      });
+
+      $scope.detectClosestStops = false;
+
+      hideOtherStops();
+
+      triggerUpdate();
+    };
+
+    var setStops = function (data) {
+      resetClosestStops();
+
+      angular.forEach(data, function (stopData) {
+        var stopMarker = new L.Marker(
+          stopData.pos,
+          {
+            title: stopData.cod,
+            icon: L.icon({
+              iconUrl: '/images/markers/bus_stop_small.png',
+              iconSize: [30, 33]
+            })
+          }
+        );
+
+        stopMarker.scope = angular.extend($scope.$new(true), {
+          code: stopData.cod,
+          name: stopData.name,
+          services: stopData.servicios.map(function (service) {
+            return {
+              code: service.cod,
+              color: service.color
+            };
+          }),
+          getStopBuses: function () {
+            return getStopBuses(this);
+          }
+        });
+
+        var onMarkerClick = function (event) {
+          if ($scope.popupStop !== undefined) {
+            $scope.popupStop.remove();
+          }
+
+          var templates = $compile($scope.popupStopTemplate)(event.target.scope);
+
+          event.target.scope.$apply();
+
+          $scope.popupStop
+            .setLatLng(event.target.getLatLng())
+            .setContent(templates[0])
+            .openOn($scope.map);
+        };
+
+        stopMarker.on('click', onMarkerClick);
+
+        $scope.closestStops[stopMarker.scope.code] = stopMarker;
+        stopMarker.addTo($scope.map);
+      });
+    };
+
+    var getClosestStops = function () {
+      if ( ! $scope.detectClosestStops) {
+        return;
+      }
+
+      var mapCenter = $scope.map.getCenter();
+
+      $http({
+        method: 'GET',
+        url: sprintf(API.getStops, mapCenter.lat, mapCenter.lng)
+      }).then(function (response) {
+        setStops(response.data);
+      }, function (response) {
+        console.log('getClosestStops error', response);
       });
     };
 
     var loadMap = function () {
-      uiGmapGoogleMapApi.then(function () {
-        $scope.infoWindow = new google.maps.InfoWindow();
-        $scope.infoWindow.forceUpdate = new Date();
+      $scope.map = L.map('map_container', {doubleClickZoom: false, tap: true}).setView([-33.46, -70.665], 16);
+      L.tileLayer(configs.mapboxUrl, {id: 'mapbox.light', attribution: 'Mapbox'}).addTo($scope.map);
 
-        $scope.$watch('infoWindow.scope.lastUpdate', function () {
-          if ($scope.infoWindow.scope !== undefined) {
-            var contents = $compile($scope.busMarkerInfoWindowTemplate)($scope.infoWindow.scope);
-            $scope.infoWindow.setContent(contents[0]);
-          }
-        });
-
-        $scope.map = new google.maps.Map(document.getElementById('google_map_container'), {
-          center: {lat: -33.48, lng: -70.65},
-          zoom: 11,
-          mapTypeId: google.maps.MapTypeId.ROADMAP,
-          disableDefaultUI: true,
-          rotateControl: false,
-          streetViewControl: false
-        });
+      // Hack to avoid map loading bug
+      $timeout(function () {
+        var evt = $window.document.createEvent('UIEvents'); 
+        evt.initUIEvent('resize', true, false, $window, 0); 
+        $window.dispatchEvent(evt);
       });
+
+      $scope.detectClosestStops = true;
+
+      $scope.servicesData = {};
+
+      $scope.closestStops = {};
+      $scope.map.on('moveend', getClosestStops);
+
+      $scope.popupStop = L.popup();
+    };
+
+    $scope.getCurrentPosition = function () {
+      $scope.map.locate({setView : true});
+    };
+
+    $scope.reset = function () {
+      if ($scope.updateTimeout !== undefined) {
+        $timeout.cancel($scope.updateTimeout);
+      }
+
+      resetClosestStops();
+      resetServicesData();
+
+      $scope.detectClosestStops = true;
+      delete $scope.selectedStop;
+
+      getClosestStops();
     };
 
     $scope.$mdMedia = $mdMedia;
