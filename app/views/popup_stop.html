@@ -1,0 +1,12 @@
+<div style="background-color: black; color: white; padding: 10px;">
+  <div style="font-size: 1.4em; font-weight: bold;">{{ code }}</div>
+  <div style="font-size: 1.3em;">{{ name }}</div>
+
+  <table style="margin: 10px 0; width: 100%; font-size: 1.3em; border-collapse: collapse;">
+    <tr ng-repeat="service in services" style="background-color: {{ service.color }};">
+      <td style="padding: 0 5px;">{{ service.code }}</td>
+    </tr>
+  </table>
+
+  <md-button class="md-accent md-raised" ng-click="getStopBuses(code, services)">Obtener buses</md-button>
+</div>

@@ -4,11 +4,12 @@
     <meta charset="utf-8">
     <title>Transantiago Scanner</title>
     <meta name="description" content="">
-    <meta name="viewport" content="width=device-width">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
     <!-- build:css(.) styles/vendor.css -->
     <!-- bower:css -->
     <link rel="stylesheet" href="bower_components/angular-material/angular-material.css" />
+    <link rel="stylesheet" href="bower_components/leaflet/dist/leaflet.css" />
     <!-- endbower -->
     <!-- endbuild -->
     <!-- build:css(.tmp) styles/main.css -->
@@ -18,48 +19,28 @@
   <body ng-controller="MainCtrl" ng-cloak>
     <md-toolbar>
       <div class="md-toolbar-tools">
-        <md-button class="md-icon-button" aria-label="Menú" ng-click="toggleSidenav()">
+        <!--md-button class="md-icon-button" aria-label="Menú" ng-click="toggleSidenav()">
           <md-icon md-svg-icon="images/svg/ic_menu_24px.svg"></md-icon>
-        </md-button>
-        <h2 class="title">
-          <div>Transantiago</div>
-          <div>Scanner</div>
-        </h2>
+        </md-button-->
         <span flex></span>
-        <div class="route_info" ng-if="selectedBusRoute">
-          <div>{{selectedBusRoute}}</div>
-          <div>{{selectedBusRouteDirectionFrom}}</div>
-          <div>{{selectedBusRouteDirectionTo}}</div>
+        <div class="route_info" ng-if="selectedStop">
+          <div>{{selectedStop.code}}</div>
+          <div>{{selectedStop.name}}</div>
+        </div>
+        <div>
+          <md-button class="md-fab md-mini md-accent md-raised" aria-label="Resetear" ng-if="selectedStop" ng-click="reset()">
+            <md-icon md-svg-src="images/svg/ic_settings_backup_restore_white_24px.svg"></md-icon>
+          </md-button>
+          <md-button class="md-fab md-mini md-accent md-raised" aria-label="Regreso" ng-click="getCurrentPosition()">
+            <md-icon md-svg-src="images/svg/ic_gps_fixed_white_24px.svg"></md-icon>
+          </md-button>
         </div>
       </div>
     </md-toolbar>
 
     <section layout="vertical">
-      <md-sidenav class="md-sidenav-left md-whiteframe-z2 sidenav" md-component-id="left" md-is-locked-open="$mdMedia('gt-sm')" flex="25" flex-xs="80" flex-sm="35" ng-class="{'sidenav_gt_sm': $mdMedia('gt-sm'), 'sidenav_sm': ! $mdMedia('gt-sm')}">
-        <md-content ng-controller="SidenavCtrl">
-          <md-grid-list class="groups_selector" md-cols="7" md-row-height="1:1" md-gutter="0px">
-            <md-grid-tile ng-repeat="group in ::groups" ng-style="{'background-color': group.color, 'color': group.textColor}">
-              <md-button class="groups_selector_button" ng-click="setGroup(group)">{{ ::group.name }}</md-button>
-            </md-grid-tile>
-          </md-grid-list>
-          <md-list class="no_padding">
-            <md-list-item ng-repeat="busRoute in busRoutes | startsWith:selectedGroup">
-              <p style="margin: 10px">{{ ::busRoute }}</p>
-              <md-button class="md-fab md-mini" aria-label="Ida" ng-click="setBusRoute(busRoute, 0)">
-                <md-icon md-svg-src="images/svg/ic_arrow_drop_up_24px.svg"></md-icon>
-              </md-button>
-              <md-button class="md-fab md-mini md-primary" aria-label="Regreso" ng-click="setBusRoute(busRoute, 1)">
-                <md-icon md-svg-src="images/svg/ic_arrow_drop_down_24px.svg"></md-icon>
-              </md-button>
-              <!--md-button class="md-fab md-mini md-warn" aria-label="Favorito" ng-click="setBusRouteFavorite(busRoute)">
-                <md-icon md-svg-src="/bower_components/material-design-icons/action/svg/production/ic_favorite_24px.svg"></md-icon>
-              </md-button-->
-            </md-list-item>
-          </md-list>
-        </md-content>
-      </md-sidenav>
       <md-content class="no_padding" layout-padding flex>
-        <div id="google_map_container" ng-class="{'google_map_container_gt_sm': $mdMedia('gt-sm'), 'google_map_container_sm': ! $mdMedia('gt-sm')}"></div>
+        <div id="map_container" ng-class="{'map_container_gt_sm': $mdMedia('gt-sm'), 'map_container_sm': ! $mdMedia('gt-sm')}"></div>
       </md-content>
     </section>
 
@@ -74,6 +55,8 @@
        ga('send', 'pageview');
     </script>
 
+    <!--script src='//maps.googleapis.com/maps/api/js?sensor=false'></script-->
+
     <!-- build:js(.) scripts/vendor.js -->
     <!-- bower:js -->
     <script src="bower_components/angular/angular.js"></script>
@@ -85,11 +68,10 @@
     <script src="bower_components/angular-aria/angular-aria.js"></script>
     <script src="bower_components/angular-messages/angular-messages.js"></script>
     <script src="bower_components/angular-material/angular-material.js"></script>
-    <script src="bower_components/angular-simple-logger/dist/angular-simple-logger.js"></script>
-    <script src="bower_components/lodash/lodash.js"></script>
-    <script src="bower_components/angular-google-maps/dist/angular-google-maps.js"></script>
     <script src="bower_components/sprintf/src/sprintf.js"></script>
+    <script src="bower_components/leaflet/dist/leaflet-src.js"></script>
     <!-- endbower -->
+    <!--script src="scripts/leaflet-google.js"></script-->
     <!-- endbuild -->
 
     <!-- build:js({.tmp,app}) scripts/scripts.js -->
@@ -99,6 +81,7 @@
     <script src="scripts/services/mapsutils.js"></script>
     <script src="scripts/controllers/main.js"></script>
     <script src="scripts/controllers/sidenav.js"></script>
+    <script src="scripts/directives/map.js"></script>
     <!-- endbuild -->
 </body>
 </html>
