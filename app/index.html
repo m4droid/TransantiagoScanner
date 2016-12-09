@@ -19,11 +19,26 @@
   <body ng-controller="MainCtrl" ng-cloak>
     <md-toolbar>
       <div class="md-toolbar-tools">
-        <!--md-button class="md-icon-button" aria-label="Menú" ng-click="toggleSidenav()">
+        <md-button class="md-icon-button" aria-label="Menú" ng-click="toggleSidenav()">
           <md-icon md-svg-icon="images/svg/ic_menu_24px.svg"></md-icon>
-        </md-button-->
+        </md-button>
         <span flex></span>
-        <div class="route_info" ng-if="selectedStop">
+        <div ng-hide="selectedStop">
+          <md-autocomplete
+            md-selected-item="stopsSearch.selected"
+            md-search-text="stopsSearch.text"
+            md-selected-item-change="stopsSearch.set(stop)"
+            md-items="stop in stopsSearch.search(stopsSearch.text)"
+            md-item-text="stop.code"
+            md-min-length="3"
+            placeholder="Buscar paradero">
+            <md-item-template>
+              <span md-highlight-text="stopsSearch.text" md-highlight-flags="^i">{{ stop.code }}</span>
+            </md-item-template>
+            <md-not-found>No se encontró el paradero.</md-not-found>
+          </md-autocomplete>
+        </div>
+        <div class="route_info" ng-show="selectedStop">
           <div>{{selectedStop.code}}</div>
           <div>{{selectedStop.name}}</div>
         </div>
@@ -31,14 +46,24 @@
           <md-button class="md-fab md-mini md-accent md-raised" aria-label="Resetear" ng-if="selectedStop" ng-click="reset()">
             <md-icon md-svg-src="images/svg/ic_settings_backup_restore_white_24px.svg"></md-icon>
           </md-button>
-          <md-button class="md-fab md-mini md-accent md-raised" aria-label="Regreso" ng-click="getCurrentPosition()">
-            <md-icon md-svg-src="images/svg/ic_gps_fixed_white_24px.svg"></md-icon>
-          </md-button>
         </div>
       </div>
     </md-toolbar>
 
     <section layout="vertical">
+      <md-sidenav class="md-sidenav-left md-whiteframe-z2 sidenav" md-component-id="left" md-is-locked-open="$mdMedia('gt-sm')" flex="25" flex-xs="80" flex-sm="35" ng-class="{'sidenav_gt_sm': $mdMedia('gt-sm'), 'sidenav_sm': ! $mdMedia('gt-sm')}">
+        <md-content ng-controller="SidenavCtrl">
+          <md-list class="no_padding">
+            <md-list-item ng-repeat="stop in latestStops">
+              <p style="margin: 10px; font-weight: bold;">{{ ::stop.cod }}</p>
+              <p style="margin: 10px">{{ ::stop.name }}</p>
+              <md-button class="md-fab md-mini" aria-label="Ida" ng-click="flyToStop(stop)" ng-hide="selectedStop">
+                <md-icon md-svg-src="images/svg/ic_arrow_drop_up_24px.svg"></md-icon>
+              </md-button>
+            </md-list-item>
+          </md-list>
+        </md-content>
+      </md-sidenav>
       <md-content class="no_padding" layout-padding flex>
         <div id="map_container" ng-class="{'map_container_gt_sm': $mdMedia('gt-sm'), 'map_container_sm': ! $mdMedia('gt-sm')}"></div>
       </md-content>
@@ -70,6 +95,7 @@
     <script src="bower_components/angular-material/angular-material.js"></script>
     <script src="bower_components/sprintf/src/sprintf.js"></script>
     <script src="bower_components/leaflet/dist/leaflet-src.js"></script>
+    <script src="bower_components/angular-local-storage/dist/angular-local-storage.js"></script>
     <!-- endbower -->
     <!--script src="scripts/leaflet-google.js"></script-->
     <!-- endbuild -->
