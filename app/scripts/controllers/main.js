@@ -8,7 +8,7 @@
  * Controller of the transantiagoScannerApp
  */
 angular.module('transantiagoScannerApp')
-  .controller('MainCtrl', function ($scope, $window, $timeout, $http, $templateRequest, $compile, $mdSidenav, $mdToast, $mdMedia, API, MapsUtils) {
+  .controller('MainCtrl', function ($scope, $window, $timeout, $http, $templateRequest, $compile, $mdSidenav, $mdToast, $mdMedia, API, MapsUtils, localStorageService) {
 
     var resetClosestStops = function () {
       if (Object.keys($scope.closestStops).length > 0) {
@@ -91,6 +91,13 @@ angular.module('transantiagoScannerApp')
       return targetPosition;
     };
 
+    var hideToast = function () {
+      $mdToast.hide($scope.toastPromise);
+
+      delete $scope.toastScope;
+      delete $scope.toastPromise;
+    };
+
     var getToastPromise = function () {
       if ($scope.toastPromise === undefined) {
         $scope.toastPromise = $mdToast.show({
@@ -169,6 +176,14 @@ angular.module('transantiagoScannerApp')
           }
         }
       });
+
+      $scope.toastScope.services = Object.keys($scope.updating);
+
+      if (Object.keys($scope.updating).length === 1) {
+        hideToast();
+      }
+
+      delete $scope.updating[service.code];
     };
 
     var getServiceBuses = function (service, date, stopIndex) {
@@ -230,6 +245,44 @@ angular.module('transantiagoScannerApp')
       }, function (response) {
         console.log('getRouteData error', response);
       });
+    };
+
+    var triggerUpdate = function (service, stopIndex) {
+      if (Object.keys($scope.servicesData[service.code]).length > 0) {
+        if ($scope.servicesData[service.code].buses !== undefined) {
+          angular.forEach($scope.servicesData[service.code].buses, function (bus) {
+            bus.positions = [];
+          });
+        }
+      }
+
+      if ($scope.updateTimeouts[service.code] !== undefined) {
+        $timeout.cancel($scope.updateTimeouts[service.code]);
+      }
+
+      if (Object.keys($scope.updating).length === 0) {
+        // Show toast
+        if ($scope.toastScope === undefined) {
+          $scope.toastScope = $scope.$new(true);
+        }
+        getToastPromise();
+      }
+
+      if ($scope.toastScope.services === undefined) {
+        $scope.toastScope.services = [];
+      }
+      $scope.toastScope.services.push(service.code);
+
+      $scope.updating[service.code] = true;
+
+      getServiceBuses(service, new Date(), stopIndex);
+
+      $scope.updateTimeouts[service.code] = $timeout(
+        function () {
+          triggerUpdate(service, stopIndex);
+        },
+        60 * 1000
+      );
     };
 
     var setServicePolyline = function (stop, service, serviceData) {
@@ -328,7 +381,7 @@ angular.module('transantiagoScannerApp')
       $scope.servicesData[service.code].polyline = polyline;
       polyline.addTo($scope.map);
 
-      getServiceBuses(service, new Date(), $scope.servicesData[service.code].stops.indexOf(stopMarker));
+      triggerUpdate(service, $scope.servicesData[service.code].stops.indexOf(stopMarker));
     };
 
     var loadTemplates = function () {
@@ -345,35 +398,6 @@ angular.module('transantiagoScannerApp')
       }, function () {
         console.log('getpopupStopTemplate error');
       });
-    };
-
-    var triggerUpdate = function () {
-      if (Object.keys($scope.servicesData).length > 0) {
-        angular.forEach($scope.servicesData, function (_, serviceCode) {
-          if ($scope.servicesData[serviceCode].buses !== undefined) {
-            angular.forEach($scope.servicesData[serviceCode].buses, function (bus) {
-              bus.positions = [];
-            });
-          }
-        });
-      }
-
-      angular.forEach($scope.selectedStop.services, function (service) {
-        $http({
-          method: 'GET',
-          url: sprintf(API.getRoute, service.code)
-        }).then(function (response) {
-          setServicePolyline($scope.selectedStop, service, response.data);
-        }, function (response) {
-          console.log('getStopBuses error', response);
-        });
-      });
-
-      if ($scope.updateTimeout !== undefined) {
-        $timeout.cancel($scope.updateTimeout);
-      }
-
-      $scope.updateTimeout = $timeout(triggerUpdate, 60 * 1000);
     };
 
     var hideOtherStops = function () {
@@ -405,55 +429,74 @@ angular.module('transantiagoScannerApp')
 
       hideOtherStops();
 
-      triggerUpdate();
+      angular.forEach($scope.selectedStop.services, function (service) {
+        $http({
+          method: 'GET',
+          url: sprintf(API.getRoute, service.code)
+        }).then(function (response) {
+          setServicePolyline($scope.selectedStop, service, response.data);
+        }, function (response) {
+          console.log('getStopBuses error', response);
+        });
+      });
+    };
+
+    $scope.getStopMarker = function (stopRawData) {
+      var stopMarker = new L.Marker(
+        stopRawData.pos,
+        {
+          title: stopRawData.cod,
+          icon: L.icon({
+            iconUrl: '/images/markers/bus_stop_small.png',
+            iconSize: [30, 33]
+          })
+        }
+      );
+
+      stopMarker.scope = angular.extend($scope.$new(true), {
+        code: stopRawData.cod,
+        name: stopRawData.name,
+        services: stopRawData.servicios.map(function (service) {
+          return {
+            code: service.cod,
+            color: service.color
+          };
+        }),
+        getStopBuses: function () {
+          return getStopBuses(this);
+        }
+      });
+
+      $scope.$watch('selectedStop', function (newValue) {
+        stopMarker.scope.selectedStop = newValue;
+      });
+
+      var onMarkerClick = function (event) {
+        if ($scope.popupStop !== undefined) {
+          $scope.popupStop.remove();
+        }
+
+        var templates = $compile($scope.popupStopTemplate)(stopMarker.scope);
+
+        $timeout(function () {
+          $scope.popupStop
+            .setLatLng(stopMarker.getLatLng())
+            .setContent(templates[0])
+            .openOn($scope.map);
+        });
+      };
+
+      stopMarker.on('click', onMarkerClick);
+      stopMarker.onMarkerClickFunc = onMarkerClick;
+
+      return stopMarker;
     };
 
     var setStops = function (data) {
       resetClosestStops();
 
-      angular.forEach(data, function (stopData) {
-        var stopMarker = new L.Marker(
-          stopData.pos,
-          {
-            title: stopData.cod,
-            icon: L.icon({
-              iconUrl: '/images/markers/bus_stop_small.png',
-              iconSize: [30, 33]
-            })
-          }
-        );
-
-        stopMarker.scope = angular.extend($scope.$new(true), {
-          code: stopData.cod,
-          name: stopData.name,
-          services: stopData.servicios.map(function (service) {
-            return {
-              code: service.cod,
-              color: service.color
-            };
-          }),
-          getStopBuses: function () {
-            return getStopBuses(this);
-          }
-        });
-
-        var onMarkerClick = function (event) {
-          if ($scope.popupStop !== undefined) {
-            $scope.popupStop.remove();
-          }
-
-          var templates = $compile($scope.popupStopTemplate)(event.target.scope);
-
-          event.target.scope.$apply();
-
-          $scope.popupStop
-            .setLatLng(event.target.getLatLng())
-            .setContent(templates[0])
-            .openOn($scope.map);
-        };
-
-        stopMarker.on('click', onMarkerClick);
-
+      angular.forEach(data, function (stopRawData) {
+        var stopMarker = $scope.getStopMarker(stopRawData);
         $scope.closestStops[stopMarker.scope.code] = stopMarker;
         stopMarker.addTo($scope.map);
       });
@@ -477,7 +520,7 @@ angular.module('transantiagoScannerApp')
     };
 
     var loadMap = function () {
-      $scope.map = L.map('map_container', {doubleClickZoom: false, tap: true}).setView([-33.46, -70.665], 16);
+      $scope.map = L.map('map_container', {doubleClickZoom: false, tap: true, zoomControl: false}).setView([-33.46, -70.665], 16);
       L.tileLayer(configs.mapboxUrl, {id: 'mapbox.light', attribution: 'Mapbox'}).addTo($scope.map);
 
       // Hack to avoid map loading bug
@@ -497,13 +540,98 @@ angular.module('transantiagoScannerApp')
       $scope.popupStop = L.popup();
     };
 
-    $scope.getCurrentPosition = function () {
-      $scope.map.locate({setView : true});
-    };
+    $scope.stopsSearch = angular.extend($scope.$new(true), {
+      load: function () {
+        localStorageService.bind(this, 'latestStops');
+
+        $http({
+          method: 'GET',
+          url: API.getAllStops
+        }).then(function (response) {
+          $scope.stopsSearch.stops = response.data.map(function (code) {
+            return {code: code};
+          });
+        }, function (response) {
+          console.log('stopsSearch getStops error', response);
+        });        
+      },
+      search: function (text) {
+        var needle = text.toUpperCase() || '';
+        return $scope.stopsSearch.stops.filter(function (stop) {
+          return stop.code.toUpperCase().startsWith(needle);
+        });
+      },
+      set: function (stop) {
+        if (stop === undefined || stop === null) {
+          return;
+        }
+        this.selectedStop = stop;
+        this._save(stop);
+      },
+      _save: function (stop) {
+        if (this.latestStops === undefined || this.latestStops === null) {
+          this.latestStops = [];
+          this.latestStops.push(stopRawData);
+          return;
+        }
+
+        var index = -1;
+        for (var i = 0; i < this.latestStops.length ; i += 1) {
+          if (this.latestStops[i].cod === stop.code) {
+            index = i;
+            break;
+          }
+        }
+
+        if (index > -1) {
+          this.latestStops.splice(index, 1);
+        }
+
+        var that = this;
+
+        // Die pls
+        $http({
+          method: 'GET',
+          url: sprintf(API.getPrediction, stop.code, '')
+        }).then(function (response) {
+          var stopRawData = {
+            pos: [response.data.x, response.data.y],
+            cod: stop.code,
+            name: response.data.nomett,
+            servicios: response.data.servicios.item.map(function (service) {
+              return {
+                cod: service.servicio,
+                color: service.color
+              }
+            })
+          };
+
+          var stopMarker = $scope.getStopMarker(stopRawData);
+
+          that.latestStops.unshift(stopRawData);
+
+          $scope.map.panTo(stopMarker.getLatLng());
+
+          stopMarker.onMarkerClickFunc();
+        }, function (response) {
+          console.log('getSingleStopData error', response);
+        });
+      }
+    });
 
     $scope.reset = function () {
-      if ($scope.updateTimeout !== undefined) {
-        $timeout.cancel($scope.updateTimeout);
+      if (Object.keys($scope.updating).length > 0) {
+        angular.forEach($scope.updating, function (_, key) {
+          delete $scope.updating[key];
+        });
+      }
+
+      hideToast();
+
+      if (Object.keys($scope.updateTimeouts.length > 0)) {
+        angular.forEach($scope.updateTimeouts, function (t) {
+          $timeout.cancel(t);
+        });
       }
 
       resetClosestStops();
@@ -516,7 +644,10 @@ angular.module('transantiagoScannerApp')
     };
 
     $scope.$mdMedia = $mdMedia;
+    $scope.updateTimeouts = {};
+    $scope.updating = {};
 
     loadTemplates();
+    $scope.stopsSearch.load();
     loadMap();
   });

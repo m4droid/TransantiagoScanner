@@ -33,6 +33,7 @@ module.exports = function(config) {
       'bower_components/angular-material/angular-material.js',
       'bower_components/sprintf/src/sprintf.js',
       'bower_components/leaflet/dist/leaflet-src.js',
+      'bower_components/angular-local-storage/dist/angular-local-storage.js',
       'bower_components/angular-mocks/angular-mocks.js',
       // endbower
       "app/scripts/**/*.js",
