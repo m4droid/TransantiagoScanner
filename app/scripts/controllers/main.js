@@ -91,6 +91,13 @@ angular.module('transantiagoScannerApp')
       return targetPosition;
     };
 
+    var hideToast = function () {
+      $mdToast.hide($scope.toastPromise);
+
+      delete $scope.toastScope;
+      delete $scope.toastPromise;
+    };
+
     var getToastPromise = function () {
       if ($scope.toastPromise === undefined) {
         $scope.toastPromise = $mdToast.show({
@@ -169,6 +176,14 @@ angular.module('transantiagoScannerApp')
           }
         }
       });
+
+      $scope.toastScope.services = Object.keys($scope.updating);
+
+      if (Object.keys($scope.updating).length === 1) {
+        hideToast();
+      }
+
+      delete $scope.updating[service.code];
     };
 
     var getServiceBuses = function (service, date, stopIndex) {
@@ -244,6 +259,21 @@ angular.module('transantiagoScannerApp')
       if ($scope.updateTimeouts[service.code] !== undefined) {
         $timeout.cancel($scope.updateTimeouts[service.code]);
       }
+
+      if (Object.keys($scope.updating).length === 0) {
+        // Show toast
+        if ($scope.toastScope === undefined) {
+          $scope.toastScope = $scope.$new(true);
+        }
+        getToastPromise();
+      }
+
+      if ($scope.toastScope.services === undefined) {
+        $scope.toastScope.services = [];
+      }
+      $scope.toastScope.services.push(service.code);
+
+      $scope.updating[service.code] = true;
 
       getServiceBuses(service, new Date(), stopIndex);
 
@@ -437,6 +467,10 @@ angular.module('transantiagoScannerApp')
         }
       });
 
+      $scope.$watch('selectedStop', function (newValue) {
+        stopMarker.scope.selectedStop = newValue;
+      });
+
       var onMarkerClick = function (event) {
         if ($scope.popupStop !== undefined) {
           $scope.popupStop.remove();
@@ -486,7 +520,7 @@ angular.module('transantiagoScannerApp')
     };
 
     var loadMap = function () {
-      $scope.map = L.map('map_container', {doubleClickZoom: false, tap: true}).setView([-33.46, -70.665], 16);
+      $scope.map = L.map('map_container', {doubleClickZoom: false, tap: true, zoomControl: false}).setView([-33.46, -70.665], 16);
       L.tileLayer(configs.mapboxUrl, {id: 'mapbox.light', attribution: 'Mapbox'}).addTo($scope.map);
 
       // Hack to avoid map loading bug
@@ -586,6 +620,14 @@ angular.module('transantiagoScannerApp')
     });
 
     $scope.reset = function () {
+      if (Object.keys($scope.updating).length > 0) {
+        angular.forEach($scope.updating, function (_, key) {
+          delete $scope.updating[key];
+        });
+      }
+
+      hideToast();
+
       if (Object.keys($scope.updateTimeouts.length > 0)) {
         angular.forEach($scope.updateTimeouts, function (t) {
           $timeout.cancel(t);
@@ -603,6 +645,7 @@ angular.module('transantiagoScannerApp')
 
     $scope.$mdMedia = $mdMedia;
     $scope.updateTimeouts = {};
+    $scope.updating = {};
 
     loadTemplates();
     $scope.stopsSearch.load();
