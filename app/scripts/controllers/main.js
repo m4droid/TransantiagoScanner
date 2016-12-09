@@ -149,7 +149,9 @@ angular.module('transantiagoScannerApp')
         );
 
         if (avgPosition === null) {
+          removeBusMarker(service, busPlate);
           console.log('Null average position', busPlate);
+          return;
         }
 
         if (busData.marker === null) {
