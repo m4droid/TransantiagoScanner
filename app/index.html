@@ -38,6 +38,11 @@
             <md-not-found>No se encontró el paradero.</md-not-found>
           </md-autocomplete>
         </div>
+        <div ng-hide="selectedStop">
+          <md-button class="md-fab md-mini md-accent md-raised" aria-label="Regreso" ng-click="getCurrentPosition()">
+            <md-icon md-svg-src="images/svg/ic_gps_fixed_white_24px.svg"></md-icon>
+          </md-button>
+        </div>
         <div class="route_info" ng-show="selectedStop">
           <div>{{selectedStop.code}}</div>
           <div>{{selectedStop.name}}</div>
