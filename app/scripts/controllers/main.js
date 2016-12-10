@@ -573,8 +573,6 @@ angular.module('transantiagoScannerApp')
       _save: function (stop) {
         if (this.latestStops === undefined || this.latestStops === null) {
           this.latestStops = [];
-          this.latestStops.push(stopRawData);
-          return;
         }
 
         var index = -1;
@@ -620,6 +618,10 @@ angular.module('transantiagoScannerApp')
         });
       }
     });
+
+    $scope.getCurrentPosition = function () {
+      $scope.map.locate({setView : true});
+    };
 
     $scope.reset = function () {
       if (Object.keys($scope.updating).length > 0) {
