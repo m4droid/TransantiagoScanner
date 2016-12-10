@@ -20,11 +20,11 @@ angular
     'LocalStorageModule'
   ])
   .constant('API', {
-    getAllStops: 'http://www.transantiago.cl/restservice/rest/getparadas/all',
-    getServices: 'http://www.transantiago.cl/restservice/rest/getservicios/all',
-    getRoute: 'http://www.transantiago.cl/restservice/rest/getrecorrido/%s',
-    getPrediction: 'http://www.transantiago.cl/predictor/prediccion?codsimt=%s&codser=%s',
-    getStops: 'http://www.transantiago.cl/restservice/rest/getpuntoparada?lat=%s&lon=%s&bip=0'
+    getAllStops: 'https://www.transantiago.cl/restservice/rest/getparadas/all',
+    getServices: 'https://www.transantiago.cl/restservice/rest/getservicios/all',
+    getRoute: 'https://www.transantiago.cl/restservice/rest/getrecorrido/%s',
+    getPrediction: 'https://www.transantiago.cl/predictor/prediccion?codsimt=%s&codser=%s',
+    getStops: 'https://www.transantiago.cl/restservice/rest/getpuntoparada?lat=%s&lon=%s&bip=0'
   })
   .config(function ($routeProvider) {
     $routeProvider
